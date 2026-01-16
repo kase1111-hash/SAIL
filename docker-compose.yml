@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  # Development environment
+  sail-dev:
+    build:
+      context: .
+      target: development
+    container_name: sail-dev
+    volumes:
+      # Mount source code for live editing
+      - ./src:/app/src:rw
+      - ./tests:/app/tests:rw
+      - ./data:/app/data:rw
+      - ./models:/app/models:rw
+      - ./config:/app/config:rw
+      # Persist pip cache
+      - sail-pip-cache:/home/sail/.cache/pip
+    environment:
+      - SAIL_ENV=development
+      - SAIL_CONFIG_PATH=/app/config/config.yaml
+      - PYTHONPATH=/app/src
+    # Audio device access (uncomment for local audio)
+    # devices:
+    #   - /dev/snd:/dev/snd
+    # group_add:
+    #   - audio
+    stdin_open: true
+    tty: true
+    networks:
+      - sail-network
+
+  # Ollama LLM service (local inference)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sail-ollama
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    # GPU support (uncomment for NVIDIA GPU)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    networks:
+      - sail-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Test runner service
+  sail-test:
+    build:
+      context: .
+      target: development
+    container_name: sail-test
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+    environment:
+      - SAIL_ENV=testing
+      - PYTHONPATH=/app/src
+    command: pytest tests/ -v --cov=src --cov-report=term-missing
+    networks:
+      - sail-network
+    profiles:
+      - testing
+
+volumes:
+  sail-pip-cache:
+  ollama-models:
+
+networks:
+  sail-network:
+    driver: bridge
