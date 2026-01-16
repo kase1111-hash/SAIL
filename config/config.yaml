@@ -1,0 +1,90 @@
+# SAIL Configuration
+# Situational Awareness Interaction Layer
+#
+# This is the main configuration file for SAIL.
+# All processing happens locally - no data leaves your hardware.
+
+sail:
+  version: "0.1.0"
+  environment: development  # development, testing, production
+
+# LLM Configuration
+llm:
+  provider: ollama          # ollama or llamacpp
+  model: llama3             # Model to use for inference
+  base_url: http://localhost:11434
+  timeout_seconds: 60
+  max_tokens: 2048
+  temperature: 0.7
+
+# Voice I/O Configuration
+voice:
+  wake_word:
+    engine: openwakeword
+    phrase: "hey sail"
+    sensitivity: 0.5
+
+  stt:
+    engine: whisper         # whisper or faster-whisper
+    model: base             # tiny, base, small, medium, large
+    language: null          # null for auto-detect
+    device: cpu             # cpu or cuda
+
+  tts:
+    engine: piper
+    voice: en_US-lessac-medium
+    rate: 1.0
+
+  input_device: null        # null for default
+  output_device: null       # null for default
+  sample_rate: 16000
+
+# Context Buffer Configuration
+context:
+  immediate_duration_seconds: 300     # 5 minutes
+  short_term_duration_seconds: 3600   # 1 hour
+  persist_sessions: true
+  storage_path: data/context
+  encryption_enabled: true
+
+# Intervention Configuration
+intervention:
+  default_mode: ambient     # ambient, advisory, guardian, crisis
+  advisory_threshold: 0.3
+  guardian_threshold: 0.6
+  crisis_threshold: 0.85
+  cooldown_seconds: 300
+
+# Sensor Configuration
+sensors:
+  gps_enabled: false
+  motion_enabled: false
+  biometrics_enabled: false
+  location_update_interval_seconds: 10
+
+# User Configuration
+# Define family members and their access levels
+users:
+  # Example user configuration:
+  #
+  # - name: parent_1
+  #   role: admin
+  #   access: full
+  #
+  # - name: teen_1
+  #   role: user
+  #   access: standard
+  #   restrictions:
+  #     - no_override_guardian_mode_while_driving
+  #   custom_briefings:
+  #     - first_job_rights
+  #     - new_driver_protocol
+  #
+  # - name: child_1
+  #   role: minor
+  #   access: limited
+  #   guardian: parent_1
+
+  - name: default_user
+    role: admin
+    access: full

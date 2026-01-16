@@ -1,0 +1,285 @@
+"""
+SAIL Command Line Interface
+
+Entry point for the SAIL application.
+"""
+
+import sys
+from pathlib import Path
+
+import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+from . import __version__
+from .config import (
+    Config,
+    ConfigurationError,
+    create_default_config,
+    get_config,
+    load_config,
+)
+
+console = Console()
+
+
+def print_banner() -> None:
+    """Print the SAIL banner."""
+    banner = """
+███████╗ █████╗ ██╗██╗
+██╔════╝██╔══██╗██║██║
+███████╗███████║██║██║
+╚════██║██╔══██║██║██║
+███████║██║  ██║██║███████╗
+╚══════╝╚═╝  ╚═╝╚═╝╚══════╝
+    """
+    console.print(Panel(banner, title="Situational Awareness Interaction Layer", subtitle=f"v{__version__}"))
+
+
+@click.group()
+@click.version_option(version=__version__, prog_name="SAIL")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=False),
+    help="Path to configuration file",
+    envvar="SAIL_CONFIG_PATH",
+)
+@click.pass_context
+def cli(ctx: click.Context, config: str | None) -> None:
+    """SAIL - Situational Awareness Interaction Layer
+
+    A privacy-first, locally-hosted AI companion for contextual guidance.
+    """
+    ctx.ensure_object(dict)
+    ctx.obj["config_path"] = config
+
+
+@cli.command()
+@click.pass_context
+def run(ctx: click.Context) -> None:
+    """Start the SAIL assistant."""
+    print_banner()
+
+    config_path = ctx.obj.get("config_path")
+
+    try:
+        if config_path:
+            config = load_config(config_path)
+        else:
+            config = get_config()
+
+        console.print(f"[green]Environment:[/green] {config.sail.environment.value}")
+        console.print(f"[green]LLM Provider:[/green] {config.llm.provider}")
+        console.print(f"[green]Model:[/green] {config.llm.model}")
+        console.print()
+        console.print("[yellow]SAIL is starting...[/yellow]")
+        console.print("[dim]Note: Core functionality not yet implemented.[/dim]")
+        console.print()
+        console.print("Press Ctrl+C to exit.")
+
+        # Placeholder for main loop
+        try:
+            while True:
+                pass
+        except KeyboardInterrupt:
+            console.print("\n[yellow]SAIL shutting down...[/yellow]")
+
+    except ConfigurationError as e:
+        console.print(f"[red]Configuration Error:[/red] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    default="config/config.yaml",
+    help="Output path for configuration file",
+)
+def init(output: str) -> None:
+    """Initialize a new SAIL configuration file."""
+    output_path = Path(output)
+
+    if output_path.exists():
+        if not click.confirm(f"Configuration file {output} already exists. Overwrite?"):
+            console.print("[yellow]Aborted.[/yellow]")
+            return
+
+    try:
+        create_default_config(output_path)
+        console.print(f"[green]Created configuration file:[/green] {output_path}")
+        console.print("[dim]Edit this file to customize SAIL settings.[/dim]")
+    except ConfigurationError as e:
+        console.print(f"[red]Error creating configuration:[/red] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.pass_context
+def config_show(ctx: click.Context) -> None:
+    """Display current configuration."""
+    config_path = ctx.obj.get("config_path")
+
+    try:
+        if config_path:
+            config = load_config(config_path)
+        else:
+            config = get_config()
+
+        # Create configuration table
+        table = Table(title="SAIL Configuration")
+        table.add_column("Section", style="cyan")
+        table.add_column("Setting", style="green")
+        table.add_column("Value", style="yellow")
+
+        # SAIL settings
+        table.add_row("sail", "version", config.sail.version)
+        table.add_row("sail", "environment", config.sail.environment.value)
+
+        # LLM settings
+        table.add_row("llm", "provider", config.llm.provider)
+        table.add_row("llm", "model", config.llm.model)
+        table.add_row("llm", "base_url", config.llm.base_url)
+
+        # Voice settings
+        table.add_row("voice", "wake_word", config.voice.wake_word.phrase)
+        table.add_row("voice", "stt_engine", config.voice.stt.engine)
+        table.add_row("voice", "tts_engine", config.voice.tts.engine)
+
+        # Context settings
+        table.add_row("context", "immediate_duration", f"{config.context.immediate_duration_seconds}s")
+        table.add_row("context", "short_term_duration", f"{config.context.short_term_duration_seconds}s")
+
+        # Intervention settings
+        table.add_row("intervention", "default_mode", config.intervention.default_mode.value)
+
+        # Users
+        table.add_row("users", "count", str(len(config.users)))
+
+        console.print(table)
+
+    except ConfigurationError as e:
+        console.print(f"[red]Configuration Error:[/red] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.pass_context
+def users(ctx: click.Context) -> None:
+    """List configured users."""
+    config_path = ctx.obj.get("config_path")
+
+    try:
+        if config_path:
+            config = load_config(config_path)
+        else:
+            config = get_config()
+
+        if not config.users:
+            console.print("[yellow]No users configured.[/yellow]")
+            return
+
+        table = Table(title="Configured Users")
+        table.add_column("Name", style="cyan")
+        table.add_column("Role", style="green")
+        table.add_column("Access", style="yellow")
+        table.add_column("Guardian", style="magenta")
+
+        for user in config.users:
+            table.add_row(
+                user.name,
+                user.role.value,
+                user.access.value,
+                user.guardian or "-",
+            )
+
+        console.print(table)
+
+    except ConfigurationError as e:
+        console.print(f"[red]Configuration Error:[/red] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+def check() -> None:
+    """Check system requirements and dependencies."""
+    console.print("[bold]SAIL System Check[/bold]\n")
+
+    checks = [
+        ("Python version", _check_python),
+        ("Configuration file", _check_config),
+        ("Ollama connection", _check_ollama),
+        ("Audio devices", _check_audio),
+    ]
+
+    all_passed = True
+    for name, check_fn in checks:
+        try:
+            result, message = check_fn()
+            status = "[green]PASS[/green]" if result else "[red]FAIL[/red]"
+            console.print(f"  {status} {name}: {message}")
+            if not result:
+                all_passed = False
+        except Exception as e:
+            console.print(f"  [red]ERROR[/red] {name}: {e}")
+            all_passed = False
+
+    console.print()
+    if all_passed:
+        console.print("[green]All checks passed![/green]")
+    else:
+        console.print("[yellow]Some checks failed. SAIL may not function correctly.[/yellow]")
+
+
+def _check_python() -> tuple[bool, str]:
+    """Check Python version."""
+    version = sys.version_info
+    if version >= (3, 11):
+        return True, f"{version.major}.{version.minor}.{version.micro}"
+    return False, f"{version.major}.{version.minor} (requires 3.11+)"
+
+
+def _check_config() -> tuple[bool, str]:
+    """Check configuration file."""
+    from .config.loader import find_config_file
+    path = find_config_file()
+    if path:
+        return True, str(path)
+    return False, "No configuration file found"
+
+
+def _check_ollama() -> tuple[bool, str]:
+    """Check Ollama connection."""
+    try:
+        import httpx
+        config = get_config()
+        response = httpx.get(f"{config.llm.base_url}/api/tags", timeout=5.0)
+        if response.status_code == 200:
+            return True, "Connected"
+        return False, f"HTTP {response.status_code}"
+    except Exception as e:
+        return False, f"Not reachable ({type(e).__name__})"
+
+
+def _check_audio() -> tuple[bool, str]:
+    """Check audio devices."""
+    try:
+        import sounddevice as sd
+        devices = sd.query_devices()
+        input_devices = sum(1 for d in devices if d["max_input_channels"] > 0)
+        output_devices = sum(1 for d in devices if d["max_output_channels"] > 0)
+        return True, f"{input_devices} input, {output_devices} output"
+    except Exception as e:
+        return False, str(e)
+
+
+def main() -> None:
+    """Main entry point."""
+    cli()
+
+
+if __name__ == "__main__":
+    main()
