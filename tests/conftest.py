@@ -3,7 +3,7 @@ SAIL Test Configuration and Fixtures
 """
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 

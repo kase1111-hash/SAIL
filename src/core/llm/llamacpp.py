@@ -8,7 +8,7 @@ llama.cpp server provides an OpenAI-compatible API endpoint.
 """
 
 import json
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 import httpx
 

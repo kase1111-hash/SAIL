@@ -4,42 +4,33 @@ SAIL Deployment Module Tests
 Comprehensive tests for node provisioning, OTA updates, and health monitoring.
 """
 
-import asyncio
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from src.hub.base import NodeType, NodeState
+from src.deployment.health import (
+    AlertSeverity,
+    HealthAlert,
+    HealthConfig,
+    HealthMetric,
+    HealthMonitor,
+    HealthStatus,
+    NodeHealth,
+)
+from src.deployment.ota import (
+    FirmwareUpdate,
+    FirmwareVersion,
+    OTAConfig,
+    OTAManager,
+    UpdateChannel,
+    UpdatePriority,
+)
 from src.deployment.provisioning import (
     NodeProvisioner,
+    NodeTemplate,
     ProvisioningConfig,
     ProvisioningResult,
     ProvisioningState,
-    NodeTemplate,
 )
-from src.deployment.ota import (
-    OTAManager,
-    OTAConfig,
-    FirmwareUpdate,
-    FirmwareVersion,
-    UpdateChannel,
-    UpdateState,
-    UpdatePriority,
-    UpdateOperation,
-)
-from src.deployment.health import (
-    HealthMonitor,
-    HealthConfig,
-    HealthStatus,
-    HealthMetric,
-    HealthAlert,
-    AlertSeverity,
-    NodeHealth,
-    SystemHealth,
-)
-
+from src.hub.base import NodeState, NodeType
 
 # ============================================================================
 # Provisioning Tests

@@ -7,7 +7,6 @@ including conflict resolution, offline sync recovery, and context handoff.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import logging
 from dataclasses import dataclass, field
@@ -339,7 +338,7 @@ class ContextSync:
         for entry_data in entries:
             try:
                 content = entry_data.get("content", "")
-                entry_type = entry_data.get("entry_type", "user_input")
+                entry_data.get("entry_type", "user_input")
                 metadata = entry_data.get("metadata", {})
                 metadata["source_node"] = source_node_id
 

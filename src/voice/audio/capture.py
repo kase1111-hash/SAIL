@@ -10,9 +10,10 @@ from __future__ import annotations
 import asyncio
 import queue
 import threading
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, AsyncIterator, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -337,7 +338,7 @@ class AudioCapture:
                 channels=self.channels,
                 timestamp=timestamp,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     async def stream(self) -> AsyncIterator[AudioChunk]:
@@ -384,7 +385,7 @@ class AudioCapture:
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""
         self.stop()
 
@@ -393,6 +394,6 @@ class AudioCapture:
         self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         self.stop()

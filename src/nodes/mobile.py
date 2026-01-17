@@ -9,16 +9,20 @@ and seamless handoff with other nodes.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from src.hub.base import NodeCapability, NodeType
-from src.nodes.base import BaseNode, NodeConfig, NodeMessage, MessageType
+from src.nodes.base import BaseNode, MessageType, NodeConfig, NodeMessage
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -154,10 +158,8 @@ class GPSTracker:
         self._is_tracking = False
         if self._tracking_task:
             self._tracking_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._tracking_task
-            except asyncio.CancelledError:
-                pass
 
         logger.info("GPS tracking stopped")
 
@@ -166,10 +168,9 @@ class GPSTracker:
         while self._is_tracking:
             try:
                 location = await self._get_location()
-                if location:
-                    if self._should_update(location):
-                        self._last_location = location
-                        self._notify_location(location)
+                if location and self._should_update(location):
+                    self._last_location = location
+                    self._notify_location(location)
 
                 await asyncio.sleep(self._update_interval)
 
@@ -528,7 +529,7 @@ class MobileNode(BaseNode):
             return
 
         entries = self._offline_store.get_entries()
-        queries = self._offline_store.get_queries()
+        self._offline_store.get_queries()
 
         if entries:
             try:

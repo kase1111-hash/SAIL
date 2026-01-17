@@ -8,19 +8,19 @@ calendar integration, and event awareness.
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, date, time, timedelta
-from typing import Any, Callable, Optional
+from datetime import date, datetime, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from .base import (
-    Sensor,
-    SensorType,
-    SensorStatus,
-    SensorReading,
-    SensorConfig,
-    TimeContext,
-    TemporalReading,
     Confidence,
+    Sensor,
+    SensorConfig,
+    SensorReading,
+    SensorStatus,
+    SensorType,
+    TemporalReading,
+    TimeContext,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,17 +64,17 @@ class CalendarEvent:
     start_time: datetime
     end_time: datetime
     all_day: bool = False
-    location: Optional[str] = None
-    description: Optional[str] = None
-    event_type: Optional[str] = None  # "work", "personal", "commute", etc.
+    location: str | None = None
+    description: str | None = None
+    event_type: str | None = None  # "work", "personal", "commute", etc.
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def is_active(self, at_time: Optional[datetime] = None) -> bool:
+    def is_active(self, at_time: datetime | None = None) -> bool:
         """Check if event is currently active."""
         check_time = at_time or datetime.now(self.start_time.tzinfo)
         return self.start_time <= check_time <= self.end_time
 
-    def is_upcoming(self, within_minutes: int = 30, at_time: Optional[datetime] = None) -> bool:
+    def is_upcoming(self, within_minutes: int = 30, at_time: datetime | None = None) -> bool:
         """Check if event is upcoming within specified minutes."""
         check_time = at_time or datetime.now(self.start_time.tzinfo)
         time_until = self.start_time - check_time
@@ -114,7 +114,7 @@ def is_weekend(dt: datetime) -> bool:
     return dt.weekday() >= 5
 
 
-def is_us_holiday(dt: date) -> tuple[bool, Optional[str]]:
+def is_us_holiday(dt: date) -> tuple[bool, str | None]:
     """Check if date is a US holiday. Returns (is_holiday, holiday_name)."""
     # Check fixed holidays
     key = (dt.month, dt.day)
@@ -161,11 +161,11 @@ class CalendarProvider:
         """Get events in time range."""
         raise NotImplementedError
 
-    async def get_current_event(self) -> Optional[CalendarEvent]:
+    async def get_current_event(self) -> CalendarEvent | None:
         """Get currently active event."""
         raise NotImplementedError
 
-    async def get_next_event(self) -> Optional[CalendarEvent]:
+    async def get_next_event(self) -> CalendarEvent | None:
         """Get next upcoming event."""
         raise NotImplementedError
 
@@ -173,7 +173,7 @@ class CalendarProvider:
 class SimulatedCalendarProvider(CalendarProvider):
     """Simulated calendar for testing."""
 
-    def __init__(self, events: Optional[list[CalendarEvent]] = None):
+    def __init__(self, events: list[CalendarEvent] | None = None):
         self.events = events or []
 
     def add_event(self, event: CalendarEvent) -> None:
@@ -191,7 +191,7 @@ class SimulatedCalendarProvider(CalendarProvider):
             if not (e.end_time < start_time or e.start_time > end_time)
         ]
 
-    async def get_current_event(self) -> Optional[CalendarEvent]:
+    async def get_current_event(self) -> CalendarEvent | None:
         """Get currently active event."""
         now = datetime.now()
         for event in self.events:
@@ -199,7 +199,7 @@ class SimulatedCalendarProvider(CalendarProvider):
                 return event
         return None
 
-    async def get_next_event(self) -> Optional[CalendarEvent]:
+    async def get_next_event(self) -> CalendarEvent | None:
         """Get next upcoming event."""
         now = datetime.now()
         upcoming = [e for e in self.events if e.start_time > now]
@@ -211,7 +211,7 @@ class SimulatedCalendarProvider(CalendarProvider):
 class ICalendarProvider(CalendarProvider):
     """Calendar provider using iCalendar files."""
 
-    def __init__(self, calendar_path: Optional[str] = None):
+    def __init__(self, calendar_path: str | None = None):
         self.calendar_path = calendar_path
         self._events: list[CalendarEvent] = []
 
@@ -240,7 +240,7 @@ class ICalendarProvider(CalendarProvider):
             if not (e.end_time < start_time or e.start_time > end_time)
         ]
 
-    async def get_current_event(self) -> Optional[CalendarEvent]:
+    async def get_current_event(self) -> CalendarEvent | None:
         """Get currently active event."""
         now = datetime.now()
         for event in self._events:
@@ -248,7 +248,7 @@ class ICalendarProvider(CalendarProvider):
                 return event
         return None
 
-    async def get_next_event(self) -> Optional[CalendarEvent]:
+    async def get_next_event(self) -> CalendarEvent | None:
         """Get next upcoming event."""
         now = datetime.now()
         upcoming = [e for e in self._events if e.start_time > now]
@@ -271,12 +271,12 @@ class TemporalAnalysis:
     timezone: str
     is_weekend: bool
     is_holiday: bool
-    holiday_name: Optional[str] = None
+    holiday_name: str | None = None
 
     # Calendar awareness
-    current_event: Optional[CalendarEvent] = None
-    next_event: Optional[CalendarEvent] = None
-    event_context: Optional[str] = None
+    current_event: CalendarEvent | None = None
+    next_event: CalendarEvent | None = None
+    event_context: str | None = None
 
     # Work/personal context inference
     is_likely_work_hours: bool = False
@@ -316,9 +316,9 @@ class TemporalSensor(Sensor):
     def __init__(
         self,
         sensor_id: str = "temporal_primary",
-        config: Optional[SensorConfig] = None,
-        calendar_provider: Optional[CalendarProvider] = None,
-        timezone: Optional[str] = None,
+        config: SensorConfig | None = None,
+        calendar_provider: CalendarProvider | None = None,
+        timezone: str | None = None,
     ):
         super().__init__(sensor_id, SensorType.TEMPORAL, config)
 
@@ -476,7 +476,7 @@ class TemporalSensor(Sensor):
 # ============================================================================
 
 
-def format_time_until(target: datetime, from_time: Optional[datetime] = None) -> str:
+def format_time_until(target: datetime, from_time: datetime | None = None) -> str:
     """Format time until target as human-readable string."""
     now = from_time or datetime.now(target.tzinfo)
     delta = target - now

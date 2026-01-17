@@ -8,19 +8,22 @@ Provides common functionality for hub communication, context sync, and events.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from src.hub.base import NodeCapability, NodeState, NodeType
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from src.nodes.protocol import SecureChannel
 
 logger = logging.getLogger(__name__)
@@ -269,10 +272,8 @@ class BaseNode(ABC):
         # Cancel background tasks
         for task in self._tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         self._tasks.clear()
 
@@ -285,7 +286,7 @@ class BaseNode(ABC):
 
     async def _connect_to_hub(self) -> None:
         """Establish connection to hub."""
-        from src.nodes.protocol import SecureChannel, ProtocolConfig
+        from src.nodes.protocol import ProtocolConfig, SecureChannel
 
         protocol_config = ProtocolConfig(
             host=self._config.hub_address,
@@ -304,14 +305,12 @@ class BaseNode(ABC):
         """Disconnect from hub."""
         if self._channel:
             # Send disconnect message
-            try:
+            with contextlib.suppress(Exception):
                 await self._send_message(NodeMessage(
                     message_id=str(uuid.uuid4()),
                     message_type=MessageType.DISCONNECT,
                     source_node_id=self._node_id,
                 ))
-            except Exception:
-                pass
 
             await self._channel.disconnect()
             self._channel = None
@@ -390,7 +389,7 @@ class BaseNode(ABC):
             await self._send_message(message)
             return await asyncio.wait_for(future, timeout=timeout)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise TimeoutError(f"Request {message_id} timed out")
 
         finally:
@@ -662,6 +661,6 @@ class BaseNode(ABC):
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()

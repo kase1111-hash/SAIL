@@ -12,23 +12,19 @@ import asyncio
 from datetime import datetime, timedelta
 
 import pytest
-
 from src.intervention.base import (
-    InterventionMode,
-    RiskLevel,
-    RiskCategory,
-    InterventionType,
-    InterventionPriority,
-    RiskFactor,
-    RiskAssessment,
     Intervention,
-    InterventionResponse,
-    ModeTransition,
     InterventionConfig,
     InterventionEventType,
-    InterventionEvent,
+    InterventionMode,
+    InterventionPriority,
+    InterventionResponse,
+    InterventionType,
+    RiskAssessment,
+    RiskCategory,
+    RiskFactor,
+    RiskLevel,
 )
-
 
 # ============================================================================
 # Base Types Tests
@@ -892,7 +888,6 @@ class TestInterventionIntegration:
     async def test_full_intervention_cycle(self):
         """Test complete intervention cycle from evaluation to response."""
         from src.intervention.engine import create_intervention_engine
-        from src.intervention.modes import generate_intervention_id
 
         engine = create_intervention_engine(InterventionConfig(
             mode_escalation_delay=0.0,

@@ -8,24 +8,26 @@ and threat cue identification for audio-based situational awareness.
 import asyncio
 import logging
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Optional
 from math import log10
+from typing import Any
+
 import numpy as np
 
 from .base import (
+    AudioEnvironment,
+    AudioReading,
+    Confidence,
     Sensor,
-    SensorType,
-    SensorStatus,
-    SensorReading,
     SensorConfig,
     SensorEvent,
     SensorEventType,
-    AudioEnvironment,
-    AudioReading,
+    SensorReading,
+    SensorStatus,
+    SensorType,
     StressLevel,
-    Confidence,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,8 +60,8 @@ class AudioFeatures:
     rms_energy: float  # Root mean square energy
     peak_amplitude: float
     zero_crossing_rate: float
-    spectral_centroid: Optional[float] = None
-    spectral_rolloff: Optional[float] = None
+    spectral_centroid: float | None = None
+    spectral_rolloff: float | None = None
     noise_level_db: float = 0.0
     has_speech: bool = False
     has_music: bool = False
@@ -274,8 +276,8 @@ class VoiceStressDetector:
     """Detects stress indicators in voice."""
 
     def __init__(self):
-        self._baseline_energy: Optional[float] = None
-        self._baseline_zcr: Optional[float] = None
+        self._baseline_energy: float | None = None
+        self._baseline_zcr: float | None = None
         self._readings: deque[AudioFeatures] = deque(maxlen=50)
 
     def update_baseline(self, features: AudioFeatures) -> None:
@@ -365,7 +367,7 @@ class ThreatCueDetector:
 class AudioProvider:
     """Abstract audio data provider."""
 
-    async def get_sample(self, duration_seconds: float) -> Optional[AudioSample]:
+    async def get_sample(self, duration_seconds: float) -> AudioSample | None:
         """Get audio sample of specified duration."""
         raise NotImplementedError
 
@@ -381,7 +383,7 @@ class SimulatedAudioProvider(AudioProvider):
         self.environment = environment
         self.sample_rate = sample_rate
 
-    async def get_sample(self, duration_seconds: float) -> Optional[AudioSample]:
+    async def get_sample(self, duration_seconds: float) -> AudioSample | None:
         """Generate simulated audio sample."""
         num_samples = int(duration_seconds * self.sample_rate)
 
@@ -413,7 +415,7 @@ class SimulatedAudioProvider(AudioProvider):
 class SystemAudioProvider(AudioProvider):
     """System audio provider using microphone."""
 
-    def __init__(self, sample_rate: int = 16000, device: Optional[int] = None):
+    def __init__(self, sample_rate: int = 16000, device: int | None = None):
         self.sample_rate = sample_rate
         self.device = device
         self._available = False
@@ -434,7 +436,7 @@ class SystemAudioProvider(AudioProvider):
             logger.error(f"Audio initialization failed: {e}")
             return False
 
-    async def get_sample(self, duration_seconds: float) -> Optional[AudioSample]:
+    async def get_sample(self, duration_seconds: float) -> AudioSample | None:
         """Capture audio from microphone."""
         if not self._available:
             return None
@@ -474,8 +476,8 @@ class AudioSensor(Sensor):
     def __init__(
         self,
         sensor_id: str = "audio_primary",
-        config: Optional[SensorConfig] = None,
-        audio_provider: Optional[AudioProvider] = None,
+        config: SensorConfig | None = None,
+        audio_provider: AudioProvider | None = None,
     ):
         super().__init__(sensor_id, SensorType.AUDIO, config)
 

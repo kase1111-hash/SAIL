@@ -10,9 +10,9 @@ from __future__ import annotations
 import logging
 import threading
 from collections import deque
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Iterator
 
 from src.context.base import (
     ContextConfig,
@@ -20,7 +20,6 @@ from src.context.base import (
     ContextEntry,
     ContextSummary,
     ContextTier,
-    DepthModeConfig,
     EntryPriority,
     EntryType,
     get_depth_mode_config,

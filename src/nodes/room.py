@@ -9,16 +9,19 @@ and auto-discovery of the central hub.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from src.hub.base import NodeCapability, NodeType
-from src.nodes.base import BaseNode, NodeConfig, NodeEvent, MessageType, NodeMessage
+from src.nodes.base import BaseNode, MessageType, NodeConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -131,10 +134,8 @@ class LEDController:
         # Cancel existing animation
         if self._animation_task:
             self._animation_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._animation_task
-            except asyncio.CancelledError:
-                pass
 
         self._current_state = state
 
@@ -209,10 +210,8 @@ class LEDController:
         """Cleanup LED resources."""
         if self._animation_task:
             self._animation_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._animation_task
-            except asyncio.CancelledError:
-                pass
 
         await self._set_color(LEDColor.OFF)
 
@@ -240,6 +239,7 @@ class AudioCapture:
         self._stream = None
         self._is_capturing = False
         self._audio_queue: asyncio.Queue | None = None
+        self._capture_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Start audio capture."""
@@ -252,7 +252,7 @@ class AudioCapture:
 
         # Would initialize sounddevice/pyaudio here
         # For now, simulate
-        asyncio.create_task(self._capture_loop())
+        self._capture_task = asyncio.create_task(self._capture_loop())
 
     async def stop(self) -> None:
         """Stop audio capture."""
@@ -274,7 +274,7 @@ class AudioCapture:
             return None
         try:
             return await asyncio.wait_for(self._audio_queue.get(), timeout=0.1)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     @property
@@ -465,7 +465,7 @@ class RoomNode(BaseNode):
         """Handle wake word detection."""
         logger.info("Wake word detected")
         self._is_listening = True
-        asyncio.create_task(self._led.set_state(LEDState.LISTENING))
+        _ = asyncio.create_task(self._led.set_state(LEDState.LISTENING))
         self._emit_event("wake_word_detected")
 
     async def start_listening(self) -> None:

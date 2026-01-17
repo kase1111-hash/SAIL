@@ -7,36 +7,32 @@ and context synchronization.
 
 import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
+from src.deployment.health import (
+    HealthMonitor,
+)
 from src.hub.base import (
     HubConfig,
     NodeCapability,
     NodeState,
     NodeType,
 )
-from src.hub.coordinator import (
-    HubCoordinator,
-    NodeRegistration,
-    Request,
-)
 from src.hub.context_sync import (
     ContextSync,
     SyncEntry,
     SyncStrategy,
 )
+from src.hub.coordinator import (
+    HubCoordinator,
+    NodeRegistration,
+    Request,
+)
 from src.hub.router import (
+    RequestPriority,
     RequestRouter,
     RoutingStrategy,
-    RequestPriority,
 )
-from src.deployment.health import (
-    HealthMonitor,
-    HealthStatus,
-)
-
 
 # ============================================================================
 # Hub and Node Integration Tests
@@ -73,7 +69,7 @@ class TestHubNodeIntegration:
             name="Living Room",
             capabilities=[NodeCapability.VOICE_INPUT, NodeCapability.VOICE_OUTPUT],
         )
-        room_id, room_token = await coordinator.register_node(
+        _room_id, _room_token = await coordinator.register_node(
             room_reg, "192.168.1.10", 8000
         )
 
@@ -83,7 +79,7 @@ class TestHubNodeIntegration:
             name="John's Phone",
             capabilities=[NodeCapability.GPS, NodeCapability.PUSH_NOTIFICATION],
         )
-        mobile_id, mobile_token = await coordinator.register_node(
+        _mobile_id, _mobile_token = await coordinator.register_node(
             mobile_reg, "192.168.1.20", 8000
         )
 
@@ -93,7 +89,7 @@ class TestHubNodeIntegration:
             name="Family Car",
             capabilities=[NodeCapability.OBD, NodeCapability.VOICE_INPUT],
         )
-        vehicle_id, vehicle_token = await coordinator.register_node(
+        _vehicle_id, _vehicle_token = await coordinator.register_node(
             vehicle_reg, "192.168.1.30", 8000
         )
 

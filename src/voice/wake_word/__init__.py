@@ -18,12 +18,12 @@ from src.voice.wake_word.openwakeword import (
 )
 
 __all__ = [
-    "WakeWordConfig",
-    "WakeWordDetector",
-    "WakeWordResult",
-    "WakeWordState",
     "OpenWakeWordConfig",
     "OpenWakeWordDetector",
     "OpenWakeWordError",
     "SimpleWakeWordDetector",
+    "WakeWordConfig",
+    "WakeWordDetector",
+    "WakeWordResult",
+    "WakeWordState",
 ]

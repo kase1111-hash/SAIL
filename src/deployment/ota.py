@@ -8,17 +8,21 @@ Manages firmware distribution, update scheduling, and rollback.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from src.hub.base import NodeType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -212,10 +216,8 @@ class OTAManager:
         """Stop the OTA manager."""
         if self._check_task:
             self._check_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._check_task
-            except asyncio.CancelledError:
-                pass
 
         logger.info("OTA manager stopped")
 

@@ -103,7 +103,7 @@ class OpenWakeWordDetector(WakeWordDetector):
                 self._model_names = self.config.builtin_models
 
             # Initialize detection counters
-            self._consecutive_detections = {name: 0 for name in self._model_names}
+            self._consecutive_detections = dict.fromkeys(self._model_names, 0)
 
         except ImportError as e:
             raise OpenWakeWordError(
@@ -115,7 +115,7 @@ class OpenWakeWordDetector(WakeWordDetector):
     def reset(self) -> None:
         """Reset detector state."""
         self._audio_buffer.clear()
-        self._consecutive_detections = {name: 0 for name in self._model_names}
+        self._consecutive_detections = dict.fromkeys(self._model_names, 0)
         self._state = WakeWordState.LISTENING
         self._last_detection_time = None
 

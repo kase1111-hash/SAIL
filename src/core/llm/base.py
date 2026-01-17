@@ -6,9 +6,9 @@ All LLM backends (Ollama, llama.cpp, etc.) implement this interface.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import AsyncIterator
 
 
 class LLMProviderType(str, Enum):

@@ -8,19 +8,18 @@ for the multi-user family system.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.users.base import (
-    User,
-    UserRole,
     AccessLevel,
-    UserRestriction,
-    UserSession,
+    User,
     UserEvent,
     UserEventType,
+    UserRestriction,
+    UserRole,
 )
 
 logger = logging.getLogger(__name__)
@@ -182,7 +181,7 @@ class PermissionChecker:
         self,
         user: User,
         permission: Permission,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> PermissionResult:
         """
         Check if a user has a specific permission.
@@ -322,7 +321,7 @@ class PermissionChecker:
         self,
         user: User,
         domain: str,
-        category: Optional[str] = None,
+        category: str | None = None,
     ) -> bool:
         """
         Check if user can access a knowledge domain/category.
@@ -349,7 +348,7 @@ class PermissionChecker:
 
         return True
 
-    def _is_age_appropriate(self, domain: str, category: Optional[str]) -> bool:
+    def _is_age_appropriate(self, domain: str, category: str | None) -> bool:
         """
         Check if content is age-appropriate.
 
@@ -455,7 +454,7 @@ class GuardianPermissionHelper:
     def can_guardian_takeover(
         guardian: User,
         dependent: User,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> PermissionResult:
         """
         Check if guardian can take over dependent's session.

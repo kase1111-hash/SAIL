@@ -15,20 +15,18 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
 
 from src.knowledge.base import (
-    KnowledgeDomain,
-    KnowledgeDomainType,
-    KnowledgeCategory,
-    KnowledgeItem,
-    KnowledgeQuery,
-    KnowledgeResult,
-    KnowledgeRelevance,
     Jurisdiction,
     JurisdictionLevel,
+    KnowledgeCategory,
+    KnowledgeDomain,
+    KnowledgeDomainType,
+    KnowledgeItem,
+    KnowledgeQuery,
+    KnowledgeRelevance,
+    KnowledgeResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -511,7 +509,7 @@ class LegalKnowledgeDomain(KnowledgeDomain):
     Legal knowledge domain providing jurisdiction-aware legal information.
     """
 
-    def __init__(self, data_path: Optional[Path] = None):
+    def __init__(self, data_path: Path | None = None):
         super().__init__(KnowledgeDomainType.LEGAL, data_path)
 
     async def load(self) -> bool:
@@ -665,7 +663,7 @@ class LegalKnowledgeDomain(KnowledgeDomain):
 
     def get_traffic_stop_guidance(
         self,
-        jurisdiction: Optional[Jurisdiction] = None,
+        jurisdiction: Jurisdiction | None = None,
     ) -> list[KnowledgeItem]:
         """Get traffic stop guidance for a jurisdiction."""
         items = self.get_items_by_category(KnowledgeCategory.TRAFFIC_STOP)
@@ -693,7 +691,7 @@ class LegalKnowledgeDomain(KnowledgeDomain):
 
     def get_tenant_rights(
         self,
-        jurisdiction: Optional[Jurisdiction] = None,
+        jurisdiction: Jurisdiction | None = None,
     ) -> list[KnowledgeItem]:
         """Get tenant rights for a jurisdiction."""
         items = self.get_items_by_category(KnowledgeCategory.TENANT_RIGHTS)
@@ -714,6 +712,6 @@ class LegalKnowledgeDomain(KnowledgeDomain):
 # ============================================================================
 
 
-def create_legal_domain(data_path: Optional[Path] = None) -> LegalKnowledgeDomain:
+def create_legal_domain(data_path: Path | None = None) -> LegalKnowledgeDomain:
     """Create a legal knowledge domain instance."""
     return LegalKnowledgeDomain(data_path)

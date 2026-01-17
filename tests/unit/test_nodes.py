@@ -4,58 +4,48 @@ SAIL Nodes Module Tests
 Comprehensive tests for satellite nodes: room, mobile, and vehicle.
 """
 
-import asyncio
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from src.hub.base import NodeCapability, NodeState, NodeType
+from src.hub.base import NodeCapability, NodeType
 from src.nodes.base import (
-    BaseNode,
-    NodeConfig,
-    NodeEvent,
-    NodeMessage,
     MessageType,
-)
-from src.nodes.protocol import (
-    Protocol,
-    ProtocolConfig,
-    SecureChannel,
-    MessageFrame,
-    FrameType,
-    discover_hub,
-)
-from src.nodes.room import (
-    RoomNode,
-    RoomNodeConfig,
-    LEDState,
-    LEDColor,
-    LEDController,
-    WakeWordDetector,
+    NodeConfig,
+    NodeMessage,
 )
 from src.nodes.mobile import (
-    MobileNode,
-    MobileNodeConfig,
     GPSLocation,
     GPSTracker,
     LocationAccuracy,
-    PushNotificationManager,
+    MobileNode,
+    MobileNodeConfig,
     OfflineStore,
+    PushNotificationManager,
+)
+from src.nodes.protocol import (
+    FrameType,
+    MessageFrame,
+    Protocol,
+    ProtocolConfig,
+    SecureChannel,
+)
+from src.nodes.room import (
+    LEDController,
+    LEDState,
+    RoomNode,
+    RoomNodeConfig,
+    WakeWordDetector,
 )
 from src.nodes.vehicle import (
-    VehicleNode,
-    VehicleNodeConfig,
-    VehicleData,
-    DrivingState,
-    EngineState,
-    OBDConnection,
     AccidentDetector,
-    DrivingModeManager,
     AccidentEvent,
     AlertLevel,
+    DrivingModeManager,
+    DrivingState,
+    OBDConnection,
+    VehicleData,
+    VehicleNode,
+    VehicleNodeConfig,
 )
-
 
 # ============================================================================
 # Base Node Tests

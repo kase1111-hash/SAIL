@@ -8,20 +8,20 @@ kept separate from other users.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
 
-from src.users.base import User, UserManagerConfig
+from src.users.base import UserManagerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,8 @@ class UserDataEncryptor:
     def __init__(self, user_id: str, data_path: Path):
         self.user_id = user_id
         self.data_path = data_path
-        self._fernet: Optional[Fernet] = None
-        self._salt: Optional[bytes] = None
+        self._fernet: Fernet | None = None
+        self._salt: bytes | None = None
 
     def initialize(self) -> bool:
         """Initialize encryption for user."""
@@ -118,7 +118,7 @@ class UserDataStore:
     encryption_enabled: bool = True
 
     # Encryptor (lazy initialized)
-    _encryptor: Optional[UserDataEncryptor] = field(default=None, repr=False)
+    _encryptor: UserDataEncryptor | None = field(default=None, repr=False)
 
     # Cached data
     _context_buffer: dict[str, Any] = field(default_factory=dict)
@@ -163,7 +163,7 @@ class UserDataStore:
             logger.error(f"Failed to save context {context_id} for {self.user_id}: {e}")
             return False
 
-    def load_context(self, context_id: str) -> Optional[dict[str, Any]]:
+    def load_context(self, context_id: str) -> dict[str, Any] | None:
         """
         Load context data for the user.
 
@@ -188,7 +188,7 @@ class UserDataStore:
                     encrypted = f.read()
                 data = self._encryptor.decrypt_json(encrypted)
             else:
-                with open(context_file, "r") as f:
+                with open(context_file) as f:
                     data = json.load(f)
 
             self._context_buffer[context_id] = data
@@ -234,7 +234,7 @@ class UserDataStore:
                     encrypted = f.read()
                 self._preferences = self._encryptor.decrypt_json(encrypted)
             else:
-                with open(prefs_file, "r") as f:
+                with open(prefs_file) as f:
                     self._preferences = json.load(f)
 
             return self._preferences
@@ -297,7 +297,7 @@ class UserDataStore:
                     encrypted = f.read()
                 data = self._encryptor.decrypt_json(encrypted)
             else:
-                with open(history_file, "r") as f:
+                with open(history_file) as f:
                     data = json.load(f)
 
             self._history = data.get("entries", [])
@@ -332,10 +332,10 @@ class DataIsolationManager:
     Manages isolated data stores for all users.
     """
 
-    def __init__(self, config: Optional[UserManagerConfig] = None):
+    def __init__(self, config: UserManagerConfig | None = None):
         self.config = config or UserManagerConfig()
         self._stores: dict[str, UserDataStore] = {}
-        self._current_store: Optional[UserDataStore] = None
+        self._current_store: UserDataStore | None = None
 
     def get_store(self, user_id: str) -> UserDataStore:
         """
@@ -368,7 +368,7 @@ class DataIsolationManager:
         self._current_store = self.get_store(user_id)
         return self._current_store
 
-    def get_current_store(self) -> Optional[UserDataStore]:
+    def get_current_store(self) -> UserDataStore | None:
         """Get the current user's data store."""
         return self._current_store
 
@@ -378,7 +378,7 @@ class DataIsolationManager:
             return False
         return self._current_store.save_context(context_id, data)
 
-    def load_context(self, context_id: str) -> Optional[dict[str, Any]]:
+    def load_context(self, context_id: str) -> dict[str, Any] | None:
         """Load context for current user."""
         if self._current_store is None:
             return None
@@ -409,7 +409,7 @@ class DataIsolationManager:
 
 
 def create_isolation_manager(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> DataIsolationManager:
     """Create a data isolation manager."""
     return DataIsolationManager(config)

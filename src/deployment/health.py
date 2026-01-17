@@ -8,15 +8,19 @@ Tracks node health, system metrics, and alerts.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from src.hub.base import NodeState, NodeType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +60,7 @@ class HealthMetric:
         """Check if metric is within healthy range."""
         if self.min_healthy is not None and self.value < self.min_healthy:
             return False
-        if self.max_healthy is not None and self.value > self.max_healthy:
-            return False
-        return True
+        return not (self.max_healthy is not None and self.value > self.max_healthy)
 
 
 @dataclass
@@ -230,10 +232,8 @@ class HealthMonitor:
 
         if self._monitor_task:
             self._monitor_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._monitor_task
-            except asyncio.CancelledError:
-                pass
 
         logger.info("Health monitor stopped")
 

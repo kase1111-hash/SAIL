@@ -10,36 +10,26 @@ Tests cover:
 - Sensor fusion manager
 """
 
-import asyncio
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import numpy as np
 import pytest
-
 from src.sensors.base import (
-    SensorType,
-    SensorStatus,
-    MotionState,
     AudioEnvironment,
-    TimeContext,
-    LocationContext,
-    StressLevel,
     Confidence,
+    Geofence,
     GeoLocation,
     Jurisdiction,
-    Geofence,
-    MotionReading,
-    TemporalReading,
-    AudioReading,
-    SensorReading,
-    SensorState,
-    SituationalState,
+    LocationContext,
+    MotionState,
     SensorConfig,
     SensorEventType,
-    SensorEvent,
+    SensorStatus,
+    SensorType,
+    SituationalState,
+    StressLevel,
+    TimeContext,
 )
-
 
 # ============================================================================
 # Base Types Tests
@@ -438,7 +428,7 @@ class TestAccidentDetector:
 
     def test_no_accident_normal_conditions(self):
         """Test no accident detected under normal conditions."""
-        from src.sensors.motion import AccidentDetector, AccelerometerReading
+        from src.sensors.motion import AccelerometerReading, AccidentDetector
 
         detector = AccidentDetector()
 
@@ -556,8 +546,9 @@ class TestIsHoliday:
 
     def test_christmas_is_holiday(self):
         """Test that Christmas is detected as holiday."""
-        from src.sensors.temporal import is_us_holiday
         from datetime import date
+
+        from src.sensors.temporal import is_us_holiday
 
         is_holiday, name = is_us_holiday(date(2024, 12, 25))
         assert is_holiday
@@ -565,8 +556,9 @@ class TestIsHoliday:
 
     def test_regular_day_not_holiday(self):
         """Test that regular day is not a holiday."""
-        from src.sensors.temporal import is_us_holiday
         from datetime import date
+
+        from src.sensors.temporal import is_us_holiday
 
         is_holiday, name = is_us_holiday(date(2024, 3, 15))
         assert not is_holiday
@@ -579,7 +571,7 @@ class TestTemporalSensor:
     @pytest.mark.asyncio
     async def test_sensor_initialization(self):
         """Test temporal sensor initialization."""
-        from src.sensors.temporal import TemporalSensor, SimulatedCalendarProvider
+        from src.sensors.temporal import SimulatedCalendarProvider, TemporalSensor
 
         sensor = TemporalSensor(
             calendar_provider=SimulatedCalendarProvider()
@@ -592,7 +584,7 @@ class TestTemporalSensor:
     @pytest.mark.asyncio
     async def test_sensor_read(self):
         """Test taking a temporal reading."""
-        from src.sensors.temporal import TemporalSensor, SimulatedCalendarProvider
+        from src.sensors.temporal import SimulatedCalendarProvider, TemporalSensor
 
         sensor = TemporalSensor(
             calendar_provider=SimulatedCalendarProvider(),
@@ -691,7 +683,7 @@ class TestVoiceStressDetector:
 
     def test_no_stress_without_speech(self):
         """Test no stress detection when no speech."""
-        from src.sensors.audio import VoiceStressDetector, AudioFeatures
+        from src.sensors.audio import AudioFeatures, VoiceStressDetector
 
         detector = VoiceStressDetector()
         features = AudioFeatures(
@@ -809,7 +801,7 @@ class TestSensorFusionManager:
         """Test initializing fusion manager."""
         from src.sensors.fusion import SensorFusionManager
         from src.sensors.location import LocationSensor, SimulatedGPSProvider
-        from src.sensors.temporal import TemporalSensor, SimulatedCalendarProvider
+        from src.sensors.temporal import SimulatedCalendarProvider, TemporalSensor
 
         manager = SensorFusionManager()
         manager.add_sensor(LocationSensor(gps_provider=SimulatedGPSProvider()))
@@ -839,7 +831,7 @@ class TestSensorFusionManager:
     async def test_state_callback(self):
         """Test state update callback."""
         from src.sensors.fusion import SensorFusionManager
-        from src.sensors.temporal import TemporalSensor, SimulatedCalendarProvider
+        from src.sensors.temporal import SimulatedCalendarProvider, TemporalSensor
 
         manager = SensorFusionManager()
         manager.add_sensor(TemporalSensor(calendar_provider=SimulatedCalendarProvider()))
@@ -861,7 +853,7 @@ class TestSensorFusionManager:
     async def test_get_stats(self):
         """Test getting fusion manager stats."""
         from src.sensors.fusion import SensorFusionManager
-        from src.sensors.temporal import TemporalSensor, SimulatedCalendarProvider
+        from src.sensors.temporal import SimulatedCalendarProvider, TemporalSensor
 
         manager = SensorFusionManager()
         manager.add_sensor(TemporalSensor(calendar_provider=SimulatedCalendarProvider()))
@@ -933,7 +925,7 @@ class TestSensorIntegration:
     async def test_context_manager_usage(self):
         """Test using fusion manager as async context manager."""
         from src.sensors.fusion import SensorFusionManager
-        from src.sensors.temporal import TemporalSensor, SimulatedCalendarProvider
+        from src.sensors.temporal import SimulatedCalendarProvider, TemporalSensor
 
         manager = SensorFusionManager()
         manager.add_sensor(TemporalSensor(calendar_provider=SimulatedCalendarProvider()))

@@ -8,15 +8,14 @@ Implements TLS encryption, message framing, and authentication.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import hmac
 import json
 import logging
-import secrets
 import struct
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -169,10 +168,7 @@ class Protocol:
         Returns:
             Message frame
         """
-        if isinstance(data, dict):
-            payload = json.dumps(data).encode("utf-8")
-        else:
-            payload = data
+        payload = json.dumps(data).encode("utf-8") if isinstance(data, dict) else data
 
         if len(payload) > self._config.max_frame_size:
             raise ValueError(f"Payload too large: {len(payload)} > {self._config.max_frame_size}")
@@ -266,7 +262,7 @@ class SecureChannel:
             self._connected = True
             logger.info(f"Connected to hub: {self._remote_addr}")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise ConnectionError("Connection timeout")
         except Exception as e:
             raise ConnectionError(f"Connection failed: {e}")
@@ -287,10 +283,8 @@ class SecureChannel:
                 pass
 
             self._writer.close()
-            try:
+            with contextlib.suppress(Exception):
                 await self._writer.wait_closed()
-            except Exception:
-                pass
 
         self._reader = None
         self._writer = None
@@ -336,7 +330,7 @@ class SecureChannel:
 
             return None
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     async def _write_frame(self, frame: MessageFrame) -> None:
@@ -472,7 +466,7 @@ async def discover_hub(
     future: asyncio.Future = loop.create_future()
 
     try:
-        transport, protocol = await loop.create_datagram_endpoint(
+        transport, _protocol = await loop.create_datagram_endpoint(
             lambda: DiscoveryProtocol(future),
             local_addr=("0.0.0.0", 0),
             allow_broadcast=True,
@@ -487,7 +481,7 @@ async def discover_hub(
         try:
             result = await asyncio.wait_for(future, timeout=timeout)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.info("Hub discovery timed out")
             return None
 

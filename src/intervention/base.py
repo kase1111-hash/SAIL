@@ -5,12 +5,12 @@ Provides intervention modes, risk levels, and response types
 for proportional situational guidance.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -224,13 +224,13 @@ class Intervention:
     priority: InterventionPriority
     mode: InterventionMode
     message: str
-    details: Optional[str] = None
+    details: str | None = None
     actions: list[str] = field(default_factory=list)
     requires_response: bool = False
-    timeout_seconds: Optional[float] = None
+    timeout_seconds: float | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """Check if intervention has expired."""
@@ -263,7 +263,7 @@ class InterventionResponse:
     intervention_id: str
     acknowledged: bool
     response_type: str  # "accepted", "dismissed", "deferred", "custom"
-    response_text: Optional[str] = None
+    response_text: str | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -284,7 +284,7 @@ class ModeTransition:
     from_mode: InterventionMode
     to_mode: InterventionMode
     reason: str
-    risk_assessment: Optional[RiskAssessment] = None
+    risk_assessment: RiskAssessment | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -339,11 +339,11 @@ class InterventionConfig:
 class ModeHandler(ABC):
     """Abstract base class for intervention mode handlers."""
 
-    def __init__(self, mode: InterventionMode, config: Optional[InterventionConfig] = None):
+    def __init__(self, mode: InterventionMode, config: InterventionConfig | None = None):
         self.mode = mode
         self.config = config or InterventionConfig()
         self._active = False
-        self._last_intervention_time: Optional[datetime] = None
+        self._last_intervention_time: datetime | None = None
         self._intervention_count = 0
 
     @property
@@ -386,7 +386,7 @@ class ModeHandler(ABC):
         self,
         context: dict[str, Any],
         risk_assessment: RiskAssessment,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         Evaluate context and determine if intervention is needed.
 
@@ -404,7 +404,7 @@ class ModeHandler(ABC):
         self,
         intervention: Intervention,
         response: InterventionResponse,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         Handle user response to an intervention.
 

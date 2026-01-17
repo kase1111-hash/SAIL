@@ -6,8 +6,7 @@ Comprehensive unit tests for the voice input pipeline components.
 
 import numpy as np
 import pytest
-
-from src.voice.audio.capture import AudioChunk, AudioDeviceInfo, AudioFormat
+from src.voice.audio.capture import AudioChunk, AudioDeviceInfo
 from src.voice.audio.vad import (
     AudioAccumulator,
     SpeechSegment,
@@ -18,7 +17,6 @@ from src.voice.audio.vad import (
 )
 from src.voice.commands import (
     CommandDetector,
-    CommandPattern,
     CommandPriority,
     CommandResult,
     CommandType,
@@ -36,7 +34,6 @@ from src.voice.wake_word.base import (
     WakeWordState,
 )
 from src.voice.wake_word.openwakeword import SimpleWakeWordDetector
-
 
 # ============================================================================
 # Audio Capture Tests

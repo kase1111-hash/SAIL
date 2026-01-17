@@ -8,13 +8,17 @@ prioritization, and handles load balancing across the hub.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Awaitable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -163,10 +167,8 @@ class RequestRouter:
         # Cancel all workers
         for worker in self._workers:
             worker.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await worker
-            except asyncio.CancelledError:
-                pass
 
         self._workers.clear()
 
@@ -308,11 +310,11 @@ class RequestRouter:
             self._stats["successful"] += 1
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._stats["timed_out"] += 1
             raise TimeoutError(f"Request {request.request_id} timed out")
 
-        except Exception as e:
+        except Exception:
             self._stats["failed"] += 1
             raise
 
@@ -340,7 +342,7 @@ class RequestRouter:
             result = await asyncio.wait_for(future, timeout=request.timeout_seconds)
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._stats["timed_out"] += 1
             raise TimeoutError(f"Request {request.request_id} timed out")
 
@@ -397,7 +399,7 @@ class RequestRouter:
                     # No requests in any queue
                     await asyncio.sleep(0.01)
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break

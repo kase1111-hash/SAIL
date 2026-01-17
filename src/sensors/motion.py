@@ -8,23 +8,23 @@ speed calculation, and accident detection.
 import asyncio
 import logging
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Callable, Optional
+from datetime import datetime
 from math import sqrt
+from typing import Any
 
 from .base import (
+    Confidence,
+    MotionReading,
+    MotionState,
     Sensor,
-    SensorType,
-    SensorStatus,
-    SensorReading,
     SensorConfig,
     SensorEvent,
     SensorEventType,
-    MotionState,
-    MotionReading,
-    Confidence,
-    GeoLocation,
+    SensorReading,
+    SensorStatus,
+    SensorType,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,8 +66,8 @@ class MotionAnalysis:
 
     state: MotionState
     confidence: Confidence
-    speed_mps: Optional[float] = None
-    acceleration_magnitude: Optional[float] = None
+    speed_mps: float | None = None
+    acceleration_magnitude: float | None = None
     is_sudden_deceleration: bool = False
     is_impact_detected: bool = False
     state_duration_seconds: float = 0.0
@@ -95,7 +95,7 @@ class MotionAnalysis:
 class AccelerometerProvider:
     """Abstract accelerometer data provider."""
 
-    async def get_reading(self) -> Optional[AccelerometerReading]:
+    async def get_reading(self) -> AccelerometerReading | None:
         """Get current accelerometer reading."""
         raise NotImplementedError
 
@@ -107,7 +107,7 @@ class SimulatedAccelerometerProvider(AccelerometerProvider):
         self.base_state = base_state
         self._noise_level = 0.1
 
-    async def get_reading(self) -> Optional[AccelerometerReading]:
+    async def get_reading(self) -> AccelerometerReading | None:
         """Get simulated accelerometer reading."""
         import random
 
@@ -145,7 +145,7 @@ class SystemAccelerometerProvider(AccelerometerProvider):
         logger.info("System accelerometer initialization (placeholder)")
         return False
 
-    async def get_reading(self) -> Optional[AccelerometerReading]:
+    async def get_reading(self) -> AccelerometerReading | None:
         """Get accelerometer reading from system."""
         if not self._available:
             return None
@@ -161,7 +161,7 @@ class SystemAccelerometerProvider(AccelerometerProvider):
 class MotionStateClassifier:
     """Classifies motion state from sensor data."""
 
-    def __init__(self, config: Optional[SensorConfig] = None):
+    def __init__(self, config: SensorConfig | None = None):
         self.config = config or SensorConfig()
 
         # Thresholds
@@ -190,8 +190,8 @@ class MotionStateClassifier:
 
     def classify(
         self,
-        speed_mps: Optional[float] = None,
-        accel: Optional[AccelerometerReading] = None,
+        speed_mps: float | None = None,
+        accel: AccelerometerReading | None = None,
     ) -> tuple[MotionState, Confidence]:
         """
         Classify current motion state.
@@ -303,12 +303,12 @@ class AccidentDetector:
 
         # Detection state
         self._potential_accident = False
-        self._accident_timestamp: Optional[datetime] = None
+        self._accident_timestamp: datetime | None = None
 
     def add_reading(
         self,
-        accel: Optional[AccelerometerReading] = None,
-        speed_mps: Optional[float] = None,
+        accel: AccelerometerReading | None = None,
+        speed_mps: float | None = None,
     ) -> None:
         """Add sensor readings."""
         if accel:
@@ -375,8 +375,8 @@ class MotionSensor(Sensor):
     def __init__(
         self,
         sensor_id: str = "motion_primary",
-        config: Optional[SensorConfig] = None,
-        accelerometer_provider: Optional[AccelerometerProvider] = None,
+        config: SensorConfig | None = None,
+        accelerometer_provider: AccelerometerProvider | None = None,
     ):
         super().__init__(sensor_id, SensorType.MOTION, config)
 
@@ -385,8 +385,8 @@ class MotionSensor(Sensor):
         self.accident_detector = AccidentDetector()
 
         self._current_state = MotionState.UNKNOWN
-        self._state_start_time: Optional[datetime] = None
-        self._last_speed: Optional[float] = None
+        self._state_start_time: datetime | None = None
+        self._last_speed: float | None = None
         self._event_callbacks: list[Callable[[SensorEvent], None]] = []
 
     def set_speed(self, speed_mps: float) -> None:

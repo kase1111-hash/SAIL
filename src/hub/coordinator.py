@@ -8,10 +8,11 @@ and orchestrating the distributed SAIL system.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from src.hub.base import (
     HubConfig,
@@ -26,6 +27,8 @@ from src.hub.base import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from src.context.manager import ContextBufferManager
     from src.hub.context_sync import ContextSync
     from src.hub.router import RequestRouter
@@ -208,10 +211,8 @@ class HubCoordinator:
         # Cancel all background tasks
         for task in self._tasks:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         self._tasks.clear()
 
@@ -513,7 +514,6 @@ class HubCoordinator:
     async def _handle_query(self, request: Request, node: Node) -> dict[str, Any]:
         """Handle a query request from a node."""
         query_text = request.payload.get("text", "")
-        user_id = request.user_id
 
         # Add to context if available
         if self._context_manager:
@@ -549,8 +549,8 @@ class HubCoordinator:
 
     async def _handle_intervention_trigger(self, request: Request, node: Node) -> dict[str, Any]:
         """Handle intervention trigger from a node."""
-        intervention_type = request.payload.get("type", "")
-        context = request.payload.get("context", {})
+        request.payload.get("type", "")
+        request.payload.get("context", {})
 
         # Forward to intervention engine (would be integrated)
         return {
@@ -560,7 +560,7 @@ class HubCoordinator:
 
     async def _handle_user_identify(self, request: Request, node: Node) -> dict[str, Any]:
         """Handle user identification request."""
-        voice_sample = request.payload.get("voice_sample")
+        request.payload.get("voice_sample")
         confidence = request.payload.get("confidence", 0.0)
 
         # Would integrate with user identification system
@@ -761,6 +761,6 @@ class HubCoordinator:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()

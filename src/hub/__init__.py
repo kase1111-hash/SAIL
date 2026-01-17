@@ -15,26 +15,26 @@ from src.hub.base import (
     NodeState,
     NodeType,
 )
-from src.hub.coordinator import HubCoordinator
 from src.hub.context_sync import ContextSync, SyncConflict, SyncStrategy
+from src.hub.coordinator import HubCoordinator
 from src.hub.router import RequestRouter, RoutingStrategy
 
 __all__ = [
+    # Context sync
+    "ContextSync",
     # Base types
     "HubConfig",
+    # Coordinator
+    "HubCoordinator",
     "HubState",
     "Node",
     "NodeCapability",
     "NodeInfo",
     "NodeState",
     "NodeType",
-    # Coordinator
-    "HubCoordinator",
-    # Context sync
-    "ContextSync",
-    "SyncConflict",
-    "SyncStrategy",
     # Router
     "RequestRouter",
     "RoutingStrategy",
+    "SyncConflict",
+    "SyncStrategy",
 ]

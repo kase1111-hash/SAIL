@@ -14,13 +14,12 @@ import logging
 import os
 import sqlite3
 import threading
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, Iterator
 
 from src.context.base import (
-    ContextConfig,
     ContextEntry,
     ContextSummary,
     ContextTier,

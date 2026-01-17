@@ -9,18 +9,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, AsyncIterator, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from src.voice.audio.capture import AudioCapture, AudioChunk
-from src.voice.audio.vad import AudioAccumulator, VADConfig, VADProcessor, VADState
-from src.voice.commands import CommandDetector, CommandResult, CommandType, QuickStopDetector
+from src.voice.audio.vad import AudioAccumulator, VADConfig, VADProcessor
+from src.voice.commands import CommandDetector, CommandResult, QuickStopDetector
 from src.voice.stt.base import STTConfig, STTProvider, TranscriptionResult
 from src.voice.stt.whisper import create_stt_provider
-from src.voice.wake_word.base import WakeWordConfig, WakeWordDetector, WakeWordResult
+from src.voice.wake_word.base import WakeWordDetector
 from src.voice.wake_word.openwakeword import OpenWakeWordConfig, OpenWakeWordDetector
 
 if TYPE_CHECKING:
@@ -398,7 +399,7 @@ class VoiceInputManager:
             if accumulated_audio is not None:
                 return await self._transcribe_audio(accumulated_audio)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
         return None
@@ -479,7 +480,7 @@ class VoiceInputManager:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()
 

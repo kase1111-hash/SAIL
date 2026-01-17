@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, AsyncIterator
 
 import numpy as np
 
@@ -21,9 +21,6 @@ from src.voice.stt.base import (
     TranscriptionSegment,
     TranscriptionState,
 )
-
-if TYPE_CHECKING:
-    pass
 
 
 class WhisperError(Exception):

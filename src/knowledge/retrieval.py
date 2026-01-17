@@ -11,27 +11,24 @@ domain system including:
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Callable
+from typing import Any
 
 import numpy as np
 
 from src.knowledge.base import (
+    Jurisdiction,
+    KnowledgeConfig,
     KnowledgeDomain,
     KnowledgeDomainType,
     KnowledgeItem,
     KnowledgeQuery,
     KnowledgeResult,
-    KnowledgeRelevance,
-    KnowledgeConfig,
-    Jurisdiction,
 )
 
 logger = logging.getLogger(__name__)
@@ -191,10 +188,10 @@ class VectorStore:
     def __init__(self, dimension: int = 384):
         self.dimension = dimension
         self._entries: dict[str, VectorEntry] = {}
-        self._embeddings: Optional[np.ndarray] = None
+        self._embeddings: np.ndarray | None = None
         self._item_ids: list[str] = []
 
-    def add(self, item_id: str, embedding: list[float], metadata: Optional[dict] = None) -> None:
+    def add(self, item_id: str, embedding: list[float], metadata: dict | None = None) -> None:
         """Add a vector entry to the store."""
         entry = VectorEntry(
             item_id=item_id,
@@ -343,8 +340,8 @@ class RAGPipeline:
 
     def __init__(
         self,
-        config: Optional[KnowledgeConfig] = None,
-        embedding_provider: Optional[EmbeddingProvider] = None,
+        config: KnowledgeConfig | None = None,
+        embedding_provider: EmbeddingProvider | None = None,
     ):
         self.config = config or KnowledgeConfig()
         self._embedding_provider = embedding_provider or LocalEmbeddingProvider(
@@ -420,8 +417,8 @@ class RAGPipeline:
     async def retrieve(
         self,
         query: str,
-        domain: Optional[KnowledgeDomainType] = None,
-        jurisdiction: Optional[Jurisdiction] = None,
+        domain: KnowledgeDomainType | None = None,
+        jurisdiction: Jurisdiction | None = None,
         max_results: int = 5,
     ) -> RAGResult:
         """
@@ -521,7 +518,7 @@ class RAGPipeline:
     async def query_with_context(
         self,
         query: KnowledgeQuery,
-        domains: Optional[list[KnowledgeDomain]] = None,
+        domains: list[KnowledgeDomain] | None = None,
     ) -> KnowledgeResult:
         """
         Query with context-aware retrieval.
@@ -608,14 +605,14 @@ class RAGPipeline:
 
 
 def create_rag_pipeline(
-    config: Optional[KnowledgeConfig] = None,
+    config: KnowledgeConfig | None = None,
 ) -> RAGPipeline:
     """Create a RAG pipeline instance."""
     return RAGPipeline(config)
 
 
 async def create_initialized_rag_pipeline(
-    config: Optional[KnowledgeConfig] = None,
+    config: KnowledgeConfig | None = None,
 ) -> RAGPipeline:
     """Create and initialize a RAG pipeline."""
     pipeline = RAGPipeline(config)

@@ -9,24 +9,19 @@ Tests cover:
 - Knowledge manager
 """
 
-import asyncio
-from datetime import datetime
-from pathlib import Path
 
 import pytest
-
 from src.knowledge.base import (
-    KnowledgeDomainType,
-    KnowledgeCategory,
-    KnowledgeRelevance,
-    JurisdictionLevel,
     Jurisdiction,
+    JurisdictionLevel,
+    KnowledgeCategory,
+    KnowledgeConfig,
+    KnowledgeDomainType,
     KnowledgeItem,
     KnowledgeQuery,
+    KnowledgeRelevance,
     KnowledgeResult,
-    KnowledgeConfig,
 )
-
 
 # ============================================================================
 # Jurisdiction Tests
@@ -641,8 +636,8 @@ class TestVectorStore:
 
     def test_add_and_search(self):
         """Test adding and searching vectors."""
-        from src.knowledge.retrieval import VectorStore
         import numpy as np
+        from src.knowledge.retrieval import VectorStore
 
         store = VectorStore(dimension=10)
 
@@ -662,8 +657,8 @@ class TestVectorStore:
 
     def test_remove(self):
         """Test removing vectors."""
-        from src.knowledge.retrieval import VectorStore
         import numpy as np
+        from src.knowledge.retrieval import VectorStore
 
         store = VectorStore(dimension=10)
         vec = np.random.randn(10).tolist()

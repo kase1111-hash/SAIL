@@ -9,14 +9,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
-
 from src.context.base import (
     ContextConfig,
     ContextDepthMode,
     ContextEntry,
     ContextSummary,
     ContextTier,
-    DepthModeConfig,
     EntryPriority,
     EntryType,
     get_depth_mode_config,
@@ -24,18 +22,16 @@ from src.context.base import (
 from src.context.buffer import (
     MultiTierBuffer,
     TierBuffer,
-    TierStats,
-)
-from src.context.persistence import (
-    ContextEncryption,
-    ContextStore,
 )
 from src.context.manager import (
     ContextBufferManager,
     ContextManagerEvent,
     SessionInfo,
 )
-
+from src.context.persistence import (
+    ContextEncryption,
+    ContextStore,
+)
 
 # ============================================================================
 # Context Entry Tests

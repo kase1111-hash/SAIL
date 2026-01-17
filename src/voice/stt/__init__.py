@@ -21,6 +21,7 @@ from src.voice.stt.whisper import (
 )
 
 __all__ = [
+    "FasterWhisperProvider",
     "STTConfig",
     "STTEngine",
     "STTProvider",
@@ -30,6 +31,5 @@ __all__ = [
     "WhisperConfig",
     "WhisperError",
     "WhisperProvider",
-    "FasterWhisperProvider",
     "create_stt_provider",
 ]

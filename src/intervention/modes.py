@@ -11,18 +11,18 @@ Implements the four intervention modes:
 import logging
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from .base import (
-    InterventionMode,
-    InterventionType,
-    InterventionPriority,
-    RiskLevel,
-    RiskAssessment,
     Intervention,
-    InterventionResponse,
     InterventionConfig,
+    InterventionMode,
+    InterventionPriority,
+    InterventionResponse,
+    InterventionType,
     ModeHandler,
+    RiskAssessment,
+    RiskLevel,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class AmbientModeHandler(ModeHandler):
     - Gathers context silently
     """
 
-    def __init__(self, config: Optional[InterventionConfig] = None):
+    def __init__(self, config: InterventionConfig | None = None):
         super().__init__(InterventionMode.AMBIENT, config)
         self._addressed = False
 
@@ -64,7 +64,7 @@ class AmbientModeHandler(ModeHandler):
         self,
         context: dict[str, Any],
         risk_assessment: RiskAssessment,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         In ambient mode, only respond if directly addressed.
         Does not proactively intervene regardless of risk.
@@ -93,7 +93,7 @@ class AmbientModeHandler(ModeHandler):
         self,
         intervention: Intervention,
         response: InterventionResponse,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """Handle user response in ambient mode."""
         # In ambient mode, responses are simple acknowledgments
         return None
@@ -113,7 +113,7 @@ class AdvisoryModeHandler(ModeHandler):
     - Respects cooldown periods
     """
 
-    def __init__(self, config: Optional[InterventionConfig] = None):
+    def __init__(self, config: InterventionConfig | None = None):
         super().__init__(InterventionMode.ADVISORY, config)
         self._recent_suggestions: dict[str, datetime] = {}
         self._suggestion_cooldown = timedelta(minutes=10)
@@ -122,7 +122,7 @@ class AdvisoryModeHandler(ModeHandler):
         self,
         context: dict[str, Any],
         risk_assessment: RiskAssessment,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         Evaluate context and provide gentle suggestions for detected risks.
         """
@@ -150,7 +150,7 @@ class AdvisoryModeHandler(ModeHandler):
         self,
         risk_assessment: RiskAssessment,
         context: dict[str, Any],
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """Generate a gentle suggestion based on risk factors."""
         if not risk_assessment.factors:
             return None
@@ -190,7 +190,7 @@ class AdvisoryModeHandler(ModeHandler):
         self,
         factor,
         context: dict[str, Any],
-    ) -> tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         """Get suggestion message and details for a risk factor."""
         suggestions = {
             "unfamiliar_area": (
@@ -221,7 +221,7 @@ class AdvisoryModeHandler(ModeHandler):
         self,
         intervention: Intervention,
         response: InterventionResponse,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """Handle user response to advisory suggestion."""
         if response.response_type == "dismissed":
             # User dismissed the suggestion - note for future
@@ -247,7 +247,7 @@ class GuardianModeHandler(ModeHandler):
     - More insistent but still respectful
     """
 
-    def __init__(self, config: Optional[InterventionConfig] = None):
+    def __init__(self, config: InterventionConfig | None = None):
         super().__init__(InterventionMode.GUARDIAN, config)
         self._pending_verifications: dict[str, Intervention] = {}
         self._alert_escalation_count: dict[str, int] = {}
@@ -256,7 +256,7 @@ class GuardianModeHandler(ModeHandler):
         self,
         context: dict[str, Any],
         risk_assessment: RiskAssessment,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         Evaluate context and provide alerts for high-risk situations.
         """
@@ -284,7 +284,7 @@ class GuardianModeHandler(ModeHandler):
         self,
         risk_assessment: RiskAssessment,
         context: dict[str, Any],
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """Generate an alert for high-risk factors."""
         if not risk_assessment.factors:
             return None
@@ -337,7 +337,7 @@ class GuardianModeHandler(ModeHandler):
         self,
         factor,
         context: dict[str, Any],
-    ) -> tuple[Optional[str], Optional[str], list[str]]:
+    ) -> tuple[str | None, str | None, list[str]]:
         """Get alert message, details, and actions for a risk factor."""
         alerts = {
             "threat_sounds": (
@@ -378,7 +378,7 @@ class GuardianModeHandler(ModeHandler):
         self,
         intervention: Intervention,
         response: InterventionResponse,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """Handle user response to guardian alert."""
         # Remove from pending if it was a verification
         self._pending_verifications.pop(intervention.id, None)
@@ -421,9 +421,9 @@ class CrisisModeHandler(ModeHandler):
     - Locks context to prevent data loss
     """
 
-    def __init__(self, config: Optional[InterventionConfig] = None):
+    def __init__(self, config: InterventionConfig | None = None):
         super().__init__(InterventionMode.CRISIS, config)
-        self._active_walkthrough: Optional[str] = None
+        self._active_walkthrough: str | None = None
         self._walkthrough_step: int = 0
         self._emergency_contacts_notified: bool = False
 
@@ -431,7 +431,7 @@ class CrisisModeHandler(ModeHandler):
         self,
         context: dict[str, Any],
         risk_assessment: RiskAssessment,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         Provide crisis guidance for critical situations.
         """
@@ -596,7 +596,7 @@ class CrisisModeHandler(ModeHandler):
         self,
         intervention: Intervention,
         response: InterventionResponse,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """Handle user response in crisis mode."""
         # Check for emergency keywords
         response_text = (response.response_text or "").lower()

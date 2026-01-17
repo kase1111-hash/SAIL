@@ -14,7 +14,6 @@ from rich.table import Table
 
 from . import __version__
 from .config import (
-    Config,
     ConfigurationError,
     create_default_config,
     get_config,

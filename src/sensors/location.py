@@ -7,24 +7,25 @@ for location-based situational awareness.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Optional
-from math import radians, sin, cos, sqrt, atan2
+from math import atan2, cos, radians, sin, sqrt
+from typing import Any
 
 from .base import (
+    Confidence,
+    Geofence,
+    GeoLocation,
+    Jurisdiction,
+    LocationContext,
     Sensor,
-    SensorType,
-    SensorStatus,
-    SensorReading,
     SensorConfig,
     SensorEvent,
     SensorEventType,
-    GeoLocation,
-    Jurisdiction,
-    Geofence,
-    LocationContext,
-    Confidence,
+    SensorReading,
+    SensorStatus,
+    SensorType,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,11 +41,11 @@ class LocationReading:
     """Combined location reading with context."""
 
     location: GeoLocation
-    jurisdiction: Optional[Jurisdiction] = None
+    jurisdiction: Jurisdiction | None = None
     context: LocationContext = LocationContext.UNKNOWN
-    active_geofence: Optional[Geofence] = None
+    active_geofence: Geofence | None = None
     is_unfamiliar: bool = False
-    distance_from_home_km: Optional[float] = None
+    distance_from_home_km: float | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,7 +69,7 @@ class LocationReading:
 class GPSProvider:
     """Abstract GPS data provider."""
 
-    async def get_location(self) -> Optional[GeoLocation]:
+    async def get_location(self) -> GeoLocation | None:
         """Get current GPS location."""
         raise NotImplementedError
 
@@ -87,7 +88,7 @@ class SimulatedGPSProvider(GPSProvider):
         self.simulate_movement = simulate_movement
         self._movement_step = 0
 
-    async def get_location(self) -> Optional[GeoLocation]:
+    async def get_location(self) -> GeoLocation | None:
         """Get simulated GPS location."""
         if self.simulate_movement:
             # Simulate movement
@@ -114,7 +115,7 @@ class SystemGPSProvider(GPSProvider):
 
     def __init__(self):
         self._gpsd_available = False
-        self._last_location: Optional[GeoLocation] = None
+        self._last_location: GeoLocation | None = None
 
     async def initialize(self) -> bool:
         """Initialize connection to GPS daemon."""
@@ -132,7 +133,7 @@ class SystemGPSProvider(GPSProvider):
             logger.warning(f"Could not connect to gpsd: {e}")
             return False
 
-    async def get_location(self) -> Optional[GeoLocation]:
+    async def get_location(self) -> GeoLocation | None:
         """Get location from system GPS."""
         if not self._gpsd_available:
             return None
@@ -222,7 +223,7 @@ class JurisdictionDetector:
         self._cache: dict[tuple[float, float], Jurisdiction] = {}
         self._cache_precision = 2  # Decimal places for cache key
 
-    def detect(self, location: GeoLocation) -> Optional[Jurisdiction]:
+    def detect(self, location: GeoLocation) -> Jurisdiction | None:
         """Detect jurisdiction from location."""
         # Check cache
         cache_key = (
@@ -265,7 +266,7 @@ class JurisdictionDetector:
         self._cache[cache_key] = jurisdiction
         return jurisdiction
 
-    async def detect_async(self, location: GeoLocation) -> Optional[Jurisdiction]:
+    async def detect_async(self, location: GeoLocation) -> Jurisdiction | None:
         """Async version of detect (for future geocoding API support)."""
         return self.detect(location)
 
@@ -278,7 +279,7 @@ class JurisdictionDetector:
 class GeofenceManager:
     """Manages geofences and detects enter/exit events."""
 
-    def __init__(self, geofences: Optional[list[Geofence]] = None):
+    def __init__(self, geofences: list[Geofence] | None = None):
         self.geofences: dict[str, Geofence] = {}
         self._active_geofences: set[str] = set()
         self._callbacks: list[Callable[[SensorEvent], None]] = []
@@ -297,7 +298,7 @@ class GeofenceManager:
             del self.geofences[geofence_id]
             self._active_geofences.discard(geofence_id)
 
-    def get_home_geofence(self) -> Optional[Geofence]:
+    def get_home_geofence(self) -> Geofence | None:
         """Get the home geofence if defined."""
         for gf in self.geofences.values():
             if gf.context == LocationContext.HOME:
@@ -308,14 +309,14 @@ class GeofenceManager:
         """Register callback for geofence events."""
         self._callbacks.append(callback)
 
-    def check_location(self, location: GeoLocation) -> tuple[Optional[Geofence], list[SensorEvent]]:
+    def check_location(self, location: GeoLocation) -> tuple[Geofence | None, list[SensorEvent]]:
         """
         Check location against geofences.
         Returns (active_geofence, list_of_events).
         """
         events: list[SensorEvent] = []
         currently_in: set[str] = set()
-        active_geofence: Optional[Geofence] = None
+        active_geofence: Geofence | None = None
 
         for gf_id, geofence in self.geofences.items():
             if geofence.contains(location):
@@ -380,8 +381,8 @@ def haversine_distance(loc1: GeoLocation, loc2: GeoLocation) -> float:
 
 def calculate_distance_from_home(
     location: GeoLocation,
-    home_geofence: Optional[Geofence],
-) -> Optional[float]:
+    home_geofence: Geofence | None,
+) -> float | None:
     """Calculate distance from home in kilometers."""
     if not home_geofence:
         return None
@@ -404,8 +405,8 @@ class LocationSensor(Sensor):
     def __init__(
         self,
         sensor_id: str = "location_primary",
-        config: Optional[SensorConfig] = None,
-        gps_provider: Optional[GPSProvider] = None,
+        config: SensorConfig | None = None,
+        gps_provider: GPSProvider | None = None,
     ):
         super().__init__(sensor_id, SensorType.LOCATION, config)
 
@@ -413,7 +414,7 @@ class LocationSensor(Sensor):
         self.jurisdiction_detector = JurisdictionDetector()
         self.geofence_manager = GeofenceManager(config.geofences if config else None)
 
-        self._last_jurisdiction: Optional[Jurisdiction] = None
+        self._last_jurisdiction: Jurisdiction | None = None
         self._event_callbacks: list[Callable[[SensorEvent], None]] = []
 
     def add_geofence(self, geofence: Geofence) -> None:

@@ -13,12 +13,15 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
 from src.hub.base import NodeCapability, NodeType
-from src.nodes.base import BaseNode, NodeConfig, NodeMessage, MessageType
+from src.nodes.base import BaseNode, NodeConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -592,7 +595,7 @@ class VehicleNode(BaseNode):
             self._start_trip()
 
         # Notify hub
-        asyncio.create_task(
+        _ = asyncio.create_task(
             self.send_sensor_data(
                 "driving_state",
                 {
@@ -613,7 +616,7 @@ class VehicleNode(BaseNode):
         logger.critical(f"ACCIDENT DETECTED: {event.severity.value} - {event.acceleration_g}g")
 
         # Trigger crisis intervention
-        asyncio.create_task(
+        _ = asyncio.create_task(
             self.trigger_intervention(
                 "accident",
                 {
