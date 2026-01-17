@@ -9,22 +9,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from src.voice.tts.base import (
     SpeechMode,
     SpeechPriority,
     SpeechRequest,
-    SpeechResult,
-    SpeechState,
-    TTSConfig,
     TTSProvider,
     VoiceProfile,
 )
-from src.voice.tts.output import AudioOutputManager, OutputState, QueuedAudio
-from src.voice.tts.piper import PiperConfig, PiperProvider, create_tts_provider
+from src.voice.tts.output import AudioOutputManager, QueuedAudio
+from src.voice.tts.piper import PiperConfig, create_tts_provider
 
 if TYPE_CHECKING:
     from src.config.schema import VoiceConfig
@@ -504,7 +502,7 @@ class VoiceOutputManager:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()
 

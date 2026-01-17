@@ -10,4 +10,4 @@ __author__ = "SAIL Contributors"
 
 from .config import Config, get_config, load_config
 
-__all__ = ["__version__", "Config", "get_config", "load_config"]
+__all__ = ["Config", "__version__", "get_config", "load_config"]

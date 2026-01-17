@@ -3,18 +3,17 @@ Tests for SAIL LLM Integration
 """
 
 import pytest
-
 from src.core.llm import (
     Constitution,
     ConstitutionalPrinciple,
     GenerationConfig,
     GenerationResult,
     IntentExtractor,
+    LlamaCppProvider,
     LLMProviderFactory,
     LLMProviderType,
     Message,
     OllamaProvider,
-    LlamaCppProvider,
     ParsedResponse,
     PromptLibrary,
     PromptRole,

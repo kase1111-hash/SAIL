@@ -13,22 +13,19 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
 
 from src.knowledge.base import (
+    JurisdictionLevel,
+    KnowledgeCategory,
     KnowledgeDomain,
     KnowledgeDomainType,
-    KnowledgeCategory,
     KnowledgeItem,
     KnowledgeQuery,
-    KnowledgeResult,
     KnowledgeRelevance,
-    Jurisdiction,
-    JurisdictionLevel,
+    KnowledgeResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -631,7 +628,7 @@ class FinancialKnowledgeDomain(KnowledgeDomain):
     Financial protection knowledge domain.
     """
 
-    def __init__(self, data_path: Optional[Path] = None):
+    def __init__(self, data_path: Path | None = None):
         super().__init__(KnowledgeDomainType.FINANCIAL, data_path)
 
     async def load(self) -> bool:
@@ -779,6 +776,6 @@ class FinancialKnowledgeDomain(KnowledgeDomain):
 # ============================================================================
 
 
-def create_financial_domain(data_path: Optional[Path] = None) -> FinancialKnowledgeDomain:
+def create_financial_domain(data_path: Path | None = None) -> FinancialKnowledgeDomain:
     """Create a financial knowledge domain instance."""
     return FinancialKnowledgeDomain(data_path)

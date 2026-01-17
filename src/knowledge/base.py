@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -100,9 +100,9 @@ class Jurisdiction:
     """
 
     country: str = "US"                 # ISO country code
-    state: Optional[str] = None         # State/province code
-    county: Optional[str] = None        # County/district
-    city: Optional[str] = None          # City/municipality
+    state: str | None = None         # State/province code
+    county: str | None = None        # County/district
+    city: str | None = None          # City/municipality
 
     def __post_init__(self) -> None:
         """Normalize jurisdiction codes."""
@@ -189,7 +189,7 @@ class KnowledgeItem:
 
     item_id: str = field(default_factory=lambda: str(uuid4()))
     domain: KnowledgeDomainType = KnowledgeDomainType.GENERAL
-    category: Optional[KnowledgeCategory] = None
+    category: KnowledgeCategory | None = None
 
     # Content
     title: str = ""
@@ -206,9 +206,9 @@ class KnowledgeItem:
     related_items: list[str] = field(default_factory=list)
 
     # Source and verification
-    source: Optional[str] = None
-    source_url: Optional[str] = None
-    last_verified: Optional[datetime] = None
+    source: str | None = None
+    source_url: str | None = None
+    last_verified: datetime | None = None
     is_verified: bool = False
 
     # Metadata
@@ -217,7 +217,7 @@ class KnowledgeItem:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     # Embedding for vector search (populated by RAG system)
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
 
     def applies_to_jurisdiction(self, jurisdiction: Jurisdiction) -> bool:
         """Check if this item applies to the given jurisdiction."""
@@ -304,9 +304,9 @@ class KnowledgeQuery:
 
     query_id: str = field(default_factory=lambda: str(uuid4()))
     query_text: str = ""
-    domain: Optional[KnowledgeDomainType] = None
-    category: Optional[KnowledgeCategory] = None
-    jurisdiction: Optional[Jurisdiction] = None
+    domain: KnowledgeDomainType | None = None
+    category: KnowledgeCategory | None = None
+    jurisdiction: Jurisdiction | None = None
 
     # Query constraints
     max_results: int = 5
@@ -347,7 +347,7 @@ class KnowledgeResult:
     total_found: int = 0
 
     # Retrieval metadata
-    domain_searched: Optional[KnowledgeDomainType] = None
+    domain_searched: KnowledgeDomainType | None = None
     jurisdiction_filtered: bool = False
     retrieval_time_ms: float = 0.0
 
@@ -356,7 +356,7 @@ class KnowledgeResult:
 
     timestamp: datetime = field(default_factory=datetime.now)
 
-    def get_best_item(self) -> Optional[KnowledgeItem]:
+    def get_best_item(self) -> KnowledgeItem | None:
         """Get the highest scoring item."""
         if self.items:
             return self.items[0]
@@ -419,7 +419,7 @@ class KnowledgeDomain(ABC):
     def __init__(
         self,
         domain_type: KnowledgeDomainType,
-        data_path: Optional[Path] = None,
+        data_path: Path | None = None,
     ):
         self.domain_type = domain_type
         self.data_path = data_path or Path("data/knowledge_base") / domain_type.value
@@ -462,7 +462,7 @@ class KnowledgeDomain(ABC):
         item.domain = self.domain_type
         self._items[item.item_id] = item
 
-    def get_item(self, item_id: str) -> Optional[KnowledgeItem]:
+    def get_item(self, item_id: str) -> KnowledgeItem | None:
         """Get a specific item by ID."""
         return self._items.get(item_id)
 

@@ -5,13 +5,13 @@ Provides sensor abstractions, reading types, and state management
 for unified situational awareness.
 """
 
+import logging
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional
-import asyncio
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -119,10 +119,10 @@ class GeoLocation:
 
     latitude: float
     longitude: float
-    altitude: Optional[float] = None
-    accuracy_meters: Optional[float] = None
-    heading: Optional[float] = None  # Degrees from true north
-    speed_mps: Optional[float] = None  # Meters per second
+    altitude: float | None = None
+    accuracy_meters: float | None = None
+    heading: float | None = None  # Degrees from true north
+    speed_mps: float | None = None  # Meters per second
     timestamp: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -157,12 +157,12 @@ class Jurisdiction:
 
     country: str
     country_code: str  # ISO 3166-1 alpha-2
-    state: Optional[str] = None
-    state_code: Optional[str] = None
-    county: Optional[str] = None
-    city: Optional[str] = None
-    postal_code: Optional[str] = None
-    timezone: Optional[str] = None
+    state: str | None = None
+    state_code: str | None = None
+    county: str | None = None
+    city: str | None = None
+    postal_code: str | None = None
+    timezone: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -206,7 +206,7 @@ class Geofence:
 
     def contains(self, location: GeoLocation) -> bool:
         """Check if a location is within this geofence."""
-        from math import radians, sin, cos, sqrt, atan2
+        from math import atan2, cos, radians, sin, sqrt
 
         # Haversine formula
         R = 6371000  # Earth's radius in meters
@@ -241,8 +241,8 @@ class MotionReading:
 
     state: MotionState
     confidence: Confidence
-    speed_mps: Optional[float] = None
-    acceleration: Optional[tuple[float, float, float]] = None  # x, y, z
+    speed_mps: float | None = None
+    acceleration: tuple[float, float, float] | None = None  # x, y, z
     timestamp: datetime = field(default_factory=datetime.now)
 
     def to_dict(self) -> dict[str, Any]:
@@ -265,8 +265,8 @@ class TemporalReading:
     is_holiday: bool
     local_time: datetime
     timezone: str
-    calendar_event: Optional[str] = None
-    event_context: Optional[str] = None  # "work_hours", "commute", etc.
+    calendar_event: str | None = None
+    event_context: str | None = None  # "work_hours", "commute", etc.
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -287,7 +287,7 @@ class AudioReading:
 
     environment: AudioEnvironment
     confidence: Confidence
-    noise_level_db: Optional[float] = None
+    noise_level_db: float | None = None
     speech_detected: bool = False
     stress_indicators: StressLevel = StressLevel.UNKNOWN
     threat_cues: list[str] = field(default_factory=list)
@@ -310,8 +310,8 @@ class AudioReading:
 class BiometricReading:
     """Biometric sensor reading (optional wearable data)."""
 
-    heart_rate_bpm: Optional[int] = None
-    heart_rate_variability: Optional[float] = None
+    heart_rate_bpm: int | None = None
+    heart_rate_variability: float | None = None
     stress_level: StressLevel = StressLevel.UNKNOWN
     confidence: Confidence = Confidence.LOW
     timestamp: datetime = field(default_factory=datetime.now)
@@ -358,9 +358,9 @@ class SensorState:
     sensor_type: SensorType
     sensor_id: str
     status: SensorStatus
-    last_reading: Optional[SensorReading] = None
-    last_update: Optional[datetime] = None
-    error_message: Optional[str] = None
+    last_reading: SensorReading | None = None
+    last_update: datetime | None = None
+    error_message: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -384,20 +384,20 @@ class SituationalState:
     """Combined situational awareness from all sensors."""
 
     # Location awareness
-    location: Optional[GeoLocation] = None
-    jurisdiction: Optional[Jurisdiction] = None
+    location: GeoLocation | None = None
+    jurisdiction: Jurisdiction | None = None
     location_context: LocationContext = LocationContext.UNKNOWN
-    in_geofence: Optional[Geofence] = None
+    in_geofence: Geofence | None = None
 
     # Motion awareness
     motion_state: MotionState = MotionState.UNKNOWN
-    speed_mps: Optional[float] = None
+    speed_mps: float | None = None
 
     # Temporal awareness
     time_context: TimeContext = TimeContext.MORNING
     is_weekend: bool = False
     is_late_night: bool = False
-    calendar_context: Optional[str] = None
+    calendar_context: str | None = None
 
     # Audio awareness
     audio_environment: AudioEnvironment = AudioEnvironment.UNKNOWN
@@ -486,15 +486,15 @@ class Sensor(ABC):
         self,
         sensor_id: str,
         sensor_type: SensorType,
-        config: Optional[SensorConfig] = None,
+        config: SensorConfig | None = None,
     ):
         self.sensor_id = sensor_id
         self.sensor_type = sensor_type
         self.config = config or SensorConfig()
         self._status = SensorStatus.UNKNOWN
-        self._last_reading: Optional[SensorReading] = None
-        self._last_update: Optional[datetime] = None
-        self._error_message: Optional[str] = None
+        self._last_reading: SensorReading | None = None
+        self._last_update: datetime | None = None
+        self._error_message: str | None = None
         self._callbacks: list[Callable[[SensorReading], None]] = []
         self._running = False
 
@@ -504,7 +504,7 @@ class Sensor(ABC):
         return self._status
 
     @property
-    def last_reading(self) -> Optional[SensorReading]:
+    def last_reading(self) -> SensorReading | None:
         """Get last sensor reading."""
         return self._last_reading
 

@@ -6,9 +6,9 @@ and validation. Ensures all outputs comply with the constitution.
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
 
 
 class ConstitutionalPrinciple(str, Enum):

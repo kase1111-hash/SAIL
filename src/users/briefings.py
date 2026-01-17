@@ -14,9 +14,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from src.users.base import User, UserRole, AccessLevel, UserManagerConfig
+from src.users.base import AccessLevel, User, UserManagerConfig, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class BriefingContent:
     min_access_level: AccessLevel = AccessLevel.LIMITED
 
     # Metadata
-    source: Optional[str] = None
+    source: str | None = None
     last_updated: datetime = field(default_factory=datetime.now)
 
     def is_accessible_by(self, user: User) -> bool:
@@ -402,7 +402,7 @@ class CustomBriefingSystem:
     System for managing and delivering custom briefings to users.
     """
 
-    def __init__(self, config: Optional[UserManagerConfig] = None):
+    def __init__(self, config: UserManagerConfig | None = None):
         self.config = config or UserManagerConfig()
 
         # Briefing content storage
@@ -411,7 +411,7 @@ class CustomBriefingSystem:
         # Load built-in briefings
         self._briefings.update(BUILTIN_BRIEFINGS)
 
-    async def load_custom_briefings(self, path: Optional[Path] = None) -> int:
+    async def load_custom_briefings(self, path: Path | None = None) -> int:
         """
         Load additional briefings from a directory.
 
@@ -450,7 +450,7 @@ class CustomBriefingSystem:
         logger.info(f"Loaded {loaded} custom briefings")
         return loaded
 
-    def get_briefing(self, briefing_id: str) -> Optional[BriefingContent]:
+    def get_briefing(self, briefing_id: str) -> BriefingContent | None:
         """Get a specific briefing by ID."""
         return self._briefings.get(briefing_id)
 
@@ -476,7 +476,7 @@ class CustomBriefingSystem:
     def get_briefings_by_category(
         self,
         category: BriefingCategory,
-        user: Optional[User] = None,
+        user: User | None = None,
     ) -> list[BriefingContent]:
         """
         Get briefings by category, optionally filtered for user access.
@@ -519,7 +519,7 @@ class CustomBriefingSystem:
     def search_briefings(
         self,
         query: str,
-        user: Optional[User] = None,
+        user: User | None = None,
     ) -> list[BriefingContent]:
         """
         Search briefings by keyword.
@@ -601,7 +601,7 @@ class CustomBriefingSystem:
 
 
 def create_briefing_system(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> CustomBriefingSystem:
     """Create a custom briefing system."""
     return CustomBriefingSystem(config)

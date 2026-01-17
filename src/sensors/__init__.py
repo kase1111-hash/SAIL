@@ -8,91 +8,86 @@ Provides unified situational awareness through multiple sensor inputs:
 - Audio (environment classification, stress detection)
 """
 
+from .audio import (
+    AudioAnalysis,
+    AudioEnvironmentClassifier,
+    AudioFeatureExtractor,
+    AudioFeatures,
+    AudioProvider,
+    AudioSample,
+    AudioSensor,
+    SimulatedAudioProvider,
+    SystemAudioProvider,
+    ThreatCueDetector,
+    VoiceStressDetector,
+)
 from .base import (
-    # Sensor types and enums
-    SensorType,
-    SensorStatus,
-    MotionState,
     AudioEnvironment,
-    TimeContext,
-    LocationContext,
-    StressLevel,
+    AudioReading,
+    BiometricReading,
     Confidence,
+    Geofence,
     # Data classes
     GeoLocation,
     Jurisdiction,
-    Geofence,
+    LocationContext,
     MotionReading,
-    TemporalReading,
-    AudioReading,
-    BiometricReading,
-    SensorReading,
-    SensorState,
-    SituationalState,
-    SensorConfig,
+    MotionState,
     # Base sensor class
     Sensor,
+    SensorConfig,
+    SensorEvent,
     # Events
     SensorEventType,
-    SensorEvent,
+    SensorReading,
+    SensorState,
+    SensorStatus,
+    # Sensor types and enums
+    SensorType,
+    SituationalState,
+    StressLevel,
+    TemporalReading,
+    TimeContext,
 )
-
-from .location import (
-    LocationSensor,
-    LocationReading,
-    GPSProvider,
-    SimulatedGPSProvider,
-    SystemGPSProvider,
-    JurisdictionDetector,
-    GeofenceManager,
-    haversine_distance,
-)
-
-from .motion import (
-    MotionSensor,
-    MotionAnalysis,
-    AccelerometerReading,
-    AccelerometerProvider,
-    SimulatedAccelerometerProvider,
-    SystemAccelerometerProvider,
-    MotionStateClassifier,
-    AccidentDetector,
-)
-
-from .temporal import (
-    TemporalSensor,
-    TemporalAnalysis,
-    CalendarEvent,
-    CalendarProvider,
-    SimulatedCalendarProvider,
-    ICalendarProvider,
-    get_time_context,
-    is_weekend,
-    is_us_holiday,
-    format_time_until,
-    get_day_period,
-)
-
-from .audio import (
-    AudioSensor,
-    AudioAnalysis,
-    AudioSample,
-    AudioFeatures,
-    AudioProvider,
-    SimulatedAudioProvider,
-    SystemAudioProvider,
-    AudioFeatureExtractor,
-    AudioEnvironmentClassifier,
-    VoiceStressDetector,
-    ThreatCueDetector,
-)
-
 from .fusion import (
-    SensorFusionManager,
     FusionEvent,
     FusionEventType,
     RiskAssessor,
+    SensorFusionManager,
     create_default_fusion_manager,
+)
+from .location import (
+    GeofenceManager,
+    GPSProvider,
+    JurisdictionDetector,
+    LocationReading,
+    LocationSensor,
+    SimulatedGPSProvider,
+    SystemGPSProvider,
+    haversine_distance,
+)
+from .motion import (
+    AccelerometerProvider,
+    AccelerometerReading,
+    AccidentDetector,
+    MotionAnalysis,
+    MotionSensor,
+    MotionStateClassifier,
+    SimulatedAccelerometerProvider,
+    SystemAccelerometerProvider,
+)
+from .temporal import (
+    CalendarEvent,
+    CalendarProvider,
+    ICalendarProvider,
+    SimulatedCalendarProvider,
+    TemporalAnalysis,
+    TemporalSensor,
+    format_time_until,
+    get_day_period,
+    get_time_context,
+    is_us_holiday,
+    is_weekend,
 )
 
 __all__ = [

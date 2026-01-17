@@ -15,41 +15,36 @@ import asyncio
 import json
 import logging
 from collections import deque
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
 import numpy as np
 
 from src.users.base import (
-    User,
-    UserRole,
     AccessLevel,
-    UserRestriction,
-    UserSession,
-    SessionState,
-    VoiceProfile,
     IdentificationMethod,
+    User,
     UserEvent,
     UserEventType,
     UserManagerConfig,
+    UserRestriction,
+    UserRole,
+    UserSession,
+)
+from src.users.guardian import (
+    GuardianAlert,
+    GuardianAlertSystem,
+    GuardianAlertTrigger,
+)
+from src.users.permissions import (
+    GuardianPermissionHelper,
+    Permission,
+    PermissionChecker,
+    PermissionResult,
 )
 from src.users.voice_id import (
     VoiceIdentificationSystem,
-    VoiceIdentificationResult,
-)
-from src.users.permissions import (
-    Permission,
-    PermissionResult,
-    PermissionChecker,
-    GuardianPermissionHelper,
-)
-from src.users.guardian import (
-    GuardianAlertSystem,
-    GuardianAlertTrigger,
-    GuardianAlert,
-    GuardianAlertType,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,7 +63,7 @@ class UserManager:
     and guardian alerts.
     """
 
-    def __init__(self, config: Optional[UserManagerConfig] = None):
+    def __init__(self, config: UserManagerConfig | None = None):
         self.config = config or UserManagerConfig()
 
         # Users indexed by user_id
@@ -78,16 +73,16 @@ class UserManager:
         self._name_to_id: dict[str, str] = {}
 
         # Current session
-        self._current_session: Optional[UserSession] = None
+        self._current_session: UserSession | None = None
 
         # Session history
         self._session_history: deque[UserSession] = deque(maxlen=50)
 
         # Subsystems
-        self._voice_id: Optional[VoiceIdentificationSystem] = None
+        self._voice_id: VoiceIdentificationSystem | None = None
         self._permission_checker = PermissionChecker()
-        self._alert_system: Optional[GuardianAlertSystem] = None
-        self._alert_trigger: Optional[GuardianAlertTrigger] = None
+        self._alert_system: GuardianAlertSystem | None = None
+        self._alert_trigger: GuardianAlertTrigger | None = None
 
         # State
         self._initialized = False
@@ -97,7 +92,7 @@ class UserManager:
         self._event_callbacks: list[Callable[[UserEvent], None]] = []
 
         # Default user for anonymous/unidentified access
-        self._default_user: Optional[User] = None
+        self._default_user: User | None = None
 
     async def initialize(self) -> bool:
         """Initialize the user manager."""
@@ -208,9 +203,9 @@ class UserManager:
         name: str,
         role: UserRole = UserRole.USER,
         access_level: AccessLevel = AccessLevel.STANDARD,
-        restrictions: Optional[list[UserRestriction]] = None,
-        guardian_name: Optional[str] = None,
-        custom_briefings: Optional[list[str]] = None,
+        restrictions: list[UserRestriction] | None = None,
+        guardian_name: str | None = None,
+        custom_briefings: list[str] | None = None,
     ) -> User:
         """
         Register a new user in the system.
@@ -263,11 +258,11 @@ class UserManager:
 
         return user
 
-    def get_user(self, user_id: str) -> Optional[User]:
+    def get_user(self, user_id: str) -> User | None:
         """Get a user by ID."""
         return self._users.get(user_id)
 
-    def get_user_by_name(self, name: str) -> Optional[User]:
+    def get_user_by_name(self, name: str) -> User | None:
         """Get a user by name."""
         user_id = self._name_to_id.get(name.lower())
         if user_id:
@@ -290,7 +285,7 @@ class UserManager:
             if dep_id in self._users
         ]
 
-    def get_guardian(self, user_id: str) -> Optional[User]:
+    def get_guardian(self, user_id: str) -> User | None:
         """Get the guardian for a user."""
         user = self._users.get(user_id)
         if user and user.guardian_id:
@@ -303,10 +298,10 @@ class UserManager:
 
     async def identify_user(
         self,
-        audio: Optional[np.ndarray] = None,
+        audio: np.ndarray | None = None,
         sample_rate: int = 16000,
-        explicit_name: Optional[str] = None,
-    ) -> tuple[Optional[User], float]:
+        explicit_name: str | None = None,
+    ) -> tuple[User | None, float]:
         """
         Identify a user from voice or explicit name.
 
@@ -393,13 +388,13 @@ class UserManager:
             },
         ))
 
-    def get_current_session(self) -> Optional[UserSession]:
+    def get_current_session(self) -> UserSession | None:
         """Get the current active session."""
         if self._current_session and not self._current_session.is_expired:
             return self._current_session
         return None
 
-    def get_current_user(self) -> Optional[User]:
+    def get_current_user(self) -> User | None:
         """Get the currently active user."""
         session = self.get_current_session()
         if session:
@@ -457,8 +452,8 @@ class UserManager:
     def check_permission(
         self,
         permission: Permission,
-        user: Optional[User] = None,
-        context: Optional[dict[str, Any]] = None,
+        user: User | None = None,
+        context: dict[str, Any] | None = None,
     ) -> PermissionResult:
         """
         Check if a user has a permission.
@@ -496,7 +491,7 @@ class UserManager:
 
         return result
 
-    def get_user_permissions(self, user: Optional[User] = None) -> set[Permission]:
+    def get_user_permissions(self, user: User | None = None) -> set[Permission]:
         """Get all permissions for a user."""
         if user is None:
             user = self.get_current_user()
@@ -599,7 +594,7 @@ class UserManager:
 
     def get_pending_guardian_alerts(
         self,
-        guardian_id: Optional[str] = None,
+        guardian_id: str | None = None,
     ) -> list[GuardianAlert]:
         """Get pending guardian alerts."""
         if not self._alert_system:
@@ -685,14 +680,14 @@ class UserManager:
 
 
 def create_user_manager(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> UserManager:
     """Create a user manager instance."""
     return UserManager(config)
 
 
 async def create_initialized_user_manager(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> UserManager:
     """Create and initialize a user manager."""
     manager = UserManager(config)

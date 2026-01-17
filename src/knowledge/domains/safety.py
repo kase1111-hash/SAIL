@@ -14,20 +14,17 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
 
 from src.knowledge.base import (
+    JurisdictionLevel,
+    KnowledgeCategory,
     KnowledgeDomain,
     KnowledgeDomainType,
-    KnowledgeCategory,
     KnowledgeItem,
     KnowledgeQuery,
-    KnowledgeResult,
     KnowledgeRelevance,
-    Jurisdiction,
-    JurisdictionLevel,
+    KnowledgeResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -558,7 +555,7 @@ class SafetyKnowledgeDomain(KnowledgeDomain):
     Safety knowledge domain providing personal safety guidance.
     """
 
-    def __init__(self, data_path: Optional[Path] = None):
+    def __init__(self, data_path: Path | None = None):
         super().__init__(KnowledgeDomainType.SAFETY, data_path)
 
     async def load(self) -> bool:
@@ -692,7 +689,7 @@ class SafetyKnowledgeDomain(KnowledgeDomain):
                 score *= 1.5
 
             # Boost late night safety if it's late
-            if context.get("is_late_night") and "late" in item_text or "night" in item_text:
+            if (context.get("is_late_night") and "late" in item_text) or "night" in item_text:
                 score *= 1.3
 
         return score
@@ -711,6 +708,6 @@ class SafetyKnowledgeDomain(KnowledgeDomain):
 # ============================================================================
 
 
-def create_safety_domain(data_path: Optional[Path] = None) -> SafetyKnowledgeDomain:
+def create_safety_domain(data_path: Path | None = None) -> SafetyKnowledgeDomain:
     """Create a safety knowledge domain instance."""
     return SafetyKnowledgeDomain(data_path)

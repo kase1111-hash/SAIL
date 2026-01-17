@@ -8,19 +8,18 @@ for the multi-user family system.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.users.base import (
-    User,
-    UserRole,
     AccessLevel,
-    UserRestriction,
-    UserSession,
+    User,
     UserEvent,
     UserEventType,
+    UserRestriction,
+    UserRole,
 )
 
 logger = logging.getLogger(__name__)
@@ -182,7 +181,7 @@ class PermissionChecker:
         self,
         user: User,
         permission: Permission,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> PermissionResult:
         """
         Check if a user has a specific permission.
@@ -209,24 +208,29 @@ class PermissionChecker:
         # Check restrictions
         restrictions_triggered = self._check_restrictions(user, permission, context_factors)
 
+        # Determine if allowed and reason
+        if restrictions_triggered:
+            allowed = False
+            reason = self._get_restriction_reason(restrictions_triggered[0])
+            requires_guardian = user.has_guardian
+        elif has_base_permission or has_access_grant:
+            allowed = True
+            reason = "Permission granted"
+            requires_guardian = False
+        else:
+            allowed = False
+            reason = f"Permission '{permission.value}' not available for role '{user.role.value}'"
+            requires_guardian = False
+
         # Build result
         result = PermissionResult(
+            allowed=allowed,
             permission=permission,
+            reason=reason,
+            requires_guardian=requires_guardian,
             context_factors=context_factors,
             restrictions_triggered=restrictions_triggered,
         )
-
-        # Determine if allowed
-        if restrictions_triggered:
-            result.allowed = False
-            result.reason = self._get_restriction_reason(restrictions_triggered[0])
-            result.requires_guardian = user.has_guardian
-        elif has_base_permission or has_access_grant:
-            result.allowed = True
-            result.reason = "Permission granted"
-        else:
-            result.allowed = False
-            result.reason = f"Permission '{permission.value}' not available for role '{user.role.value}'"
 
         # Log if permission denied
         if not result.allowed:
@@ -322,7 +326,7 @@ class PermissionChecker:
         self,
         user: User,
         domain: str,
-        category: Optional[str] = None,
+        category: str | None = None,
     ) -> bool:
         """
         Check if user can access a knowledge domain/category.
@@ -349,7 +353,7 @@ class PermissionChecker:
 
         return True
 
-    def _is_age_appropriate(self, domain: str, category: Optional[str]) -> bool:
+    def _is_age_appropriate(self, domain: str, category: str | None) -> bool:
         """
         Check if content is age-appropriate.
 
@@ -455,7 +459,7 @@ class GuardianPermissionHelper:
     def can_guardian_takeover(
         guardian: User,
         dependent: User,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> PermissionResult:
         """
         Check if guardian can take over dependent's session.

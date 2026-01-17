@@ -7,34 +7,28 @@ correlating location, motion, temporal, and audio data.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any
 
+from .audio import AudioAnalysis, AudioSensor
 from .base import (
+    Confidence,
+    LocationContext,
+    MotionState,
     Sensor,
-    SensorType,
-    SensorStatus,
-    SensorReading,
     SensorConfig,
     SensorEvent,
-    SensorEventType,
+    SensorReading,
     SensorState,
+    SensorType,
     SituationalState,
-    GeoLocation,
-    Jurisdiction,
-    Geofence,
-    MotionState,
-    AudioEnvironment,
-    TimeContext,
-    LocationContext,
     StressLevel,
-    Confidence,
 )
-from .location import LocationSensor, LocationReading
-from .motion import MotionSensor, MotionAnalysis
-from .temporal import TemporalSensor, TemporalAnalysis
-from .audio import AudioSensor, AudioAnalysis
+from .location import LocationReading, LocationSensor
+from .motion import MotionAnalysis, MotionSensor
+from .temporal import TemporalAnalysis, TemporalSensor
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +53,7 @@ class FusionEvent:
 
     event_type: str
     situational_state: SituationalState
-    trigger: Optional[str] = None
+    trigger: str | None = None
     details: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -149,7 +143,7 @@ class SensorFusionManager:
     Manages all sensors and fuses their data into unified situational awareness.
     """
 
-    def __init__(self, config: Optional[SensorConfig] = None):
+    def __init__(self, config: SensorConfig | None = None):
         self.config = config or SensorConfig()
 
         # Sensors
@@ -429,8 +423,8 @@ class SensorFusionManager:
     def _emit_fusion_event(
         self,
         event_type: str,
-        trigger: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        trigger: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         """Emit a fusion event."""
         event = FusionEvent(
@@ -499,7 +493,7 @@ class SensorFusionManager:
 
 
 def create_default_fusion_manager(
-    config: Optional[SensorConfig] = None,
+    config: SensorConfig | None = None,
     use_simulated: bool = True,
 ) -> SensorFusionManager:
     """
@@ -512,10 +506,10 @@ def create_default_fusion_manager(
     Returns:
         Configured SensorFusionManager
     """
+    from .audio import SimulatedAudioProvider, SystemAudioProvider
     from .location import SimulatedGPSProvider, SystemGPSProvider
     from .motion import SimulatedAccelerometerProvider, SystemAccelerometerProvider
     from .temporal import SimulatedCalendarProvider
-    from .audio import SimulatedAudioProvider, SystemAudioProvider
 
     config = config or SensorConfig()
     manager = SensorFusionManager(config)

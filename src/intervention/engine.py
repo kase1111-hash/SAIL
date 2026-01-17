@@ -8,30 +8,27 @@ responses across the intervention framework.
 import asyncio
 import logging
 from collections import deque
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
 from .base import (
-    InterventionMode,
-    InterventionType,
-    InterventionPriority,
-    RiskLevel,
-    RiskAssessment,
     Intervention,
-    InterventionResponse,
     InterventionConfig,
-    ModeTransition,
     InterventionEvent,
     InterventionEventType,
+    InterventionMode,
+    InterventionResponse,
+    ModeTransition,
+    RiskAssessment,
+)
+from .modes import (
+    AdvisoryModeHandler,
+    AmbientModeHandler,
+    CrisisModeHandler,
+    GuardianModeHandler,
 )
 from .risk import RiskAssessmentEngine
-from .modes import (
-    AmbientModeHandler,
-    AdvisoryModeHandler,
-    GuardianModeHandler,
-    CrisisModeHandler,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +60,7 @@ class InterventionQueue:
         if len(self._queue) > self._max_size:
             self._queue = self._queue[:self._max_size]
 
-    def get_next(self) -> Optional[Intervention]:
+    def get_next(self) -> Intervention | None:
         """Get and remove highest priority intervention."""
         self._cleanup_expired()
 
@@ -71,7 +68,7 @@ class InterventionQueue:
             return self._queue.pop(0)
         return None
 
-    def peek(self) -> Optional[Intervention]:
+    def peek(self) -> Intervention | None:
         """View highest priority intervention without removing."""
         self._cleanup_expired()
 
@@ -121,7 +118,7 @@ class InterventionEngine:
     - Event callbacks and logging
     """
 
-    def __init__(self, config: Optional[InterventionConfig] = None):
+    def __init__(self, config: InterventionConfig | None = None):
         self.config = config or InterventionConfig()
 
         # Current mode
@@ -130,7 +127,7 @@ class InterventionEngine:
 
         # Risk assessment
         self._risk_engine = RiskAssessmentEngine(self.config)
-        self._last_assessment: Optional[RiskAssessment] = None
+        self._last_assessment: RiskAssessment | None = None
 
         # Mode handlers
         self._handlers: dict[InterventionMode, Any] = {
@@ -150,9 +147,9 @@ class InterventionEngine:
 
         # Mode transition tracking
         self._mode_history: deque[ModeTransition] = deque(maxlen=50)
-        self._pending_escalation: Optional[InterventionMode] = None
-        self._pending_deescalation: Optional[InterventionMode] = None
-        self._escalation_timer: Optional[datetime] = None
+        self._pending_escalation: InterventionMode | None = None
+        self._pending_deescalation: InterventionMode | None = None
+        self._escalation_timer: datetime | None = None
 
         # Callbacks
         self._event_callbacks: list[Callable[[InterventionEvent], None]] = []
@@ -167,7 +164,7 @@ class InterventionEngine:
         return self._current_mode
 
     @property
-    def last_assessment(self) -> Optional[RiskAssessment]:
+    def last_assessment(self) -> RiskAssessment | None:
         """Get last risk assessment."""
         return self._last_assessment
 
@@ -189,7 +186,7 @@ class InterventionEngine:
         self._running = False
         logger.info("Intervention engine stopped")
 
-    async def evaluate(self, context: dict[str, Any]) -> Optional[Intervention]:
+    async def evaluate(self, context: dict[str, Any]) -> Intervention | None:
         """
         Evaluate context and potentially generate an intervention.
 
@@ -294,7 +291,7 @@ class InterventionEngine:
         self,
         new_mode: InterventionMode,
         reason: str,
-        assessment: Optional[RiskAssessment] = None,
+        assessment: RiskAssessment | None = None,
     ) -> None:
         """Execute mode transition."""
         old_mode = self._current_mode
@@ -331,7 +328,7 @@ class InterventionEngine:
         """Add intervention to queue."""
         self._intervention_queue.add(intervention)
 
-    def _get_next_intervention(self) -> Optional[Intervention]:
+    def _get_next_intervention(self) -> Intervention | None:
         """Get next intervention to deliver."""
         intervention = self._intervention_queue.get_next()
 
@@ -354,7 +351,7 @@ class InterventionEngine:
         self,
         intervention_id: str,
         response: InterventionResponse,
-    ) -> Optional[Intervention]:
+    ) -> Intervention | None:
         """
         Handle user response to an intervention.
 
@@ -467,7 +464,7 @@ class InterventionEngine:
 
 
 def create_intervention_engine(
-    config: Optional[InterventionConfig] = None,
+    config: InterventionConfig | None = None,
 ) -> InterventionEngine:
     """
     Create and configure an intervention engine.

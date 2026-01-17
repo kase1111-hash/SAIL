@@ -7,7 +7,6 @@ All configuration is validated at load time to catch errors early.
 
 from enum import Enum
 from pathlib import Path
-from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 

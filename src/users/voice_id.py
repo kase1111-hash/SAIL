@@ -7,25 +7,23 @@ for automatic user recognition in the multi-user family system.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 import numpy as np
 
 from src.users.base import (
-    VoiceProfile,
-    User,
     IdentificationMethod,
     UserEvent,
     UserEventType,
     UserManagerConfig,
+    VoiceProfile,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,7 +115,6 @@ class LocalVoiceEmbeddingProvider(VoiceEmbeddingProvider):
     def _embed_resemblyzer(self, audio: np.ndarray, sample_rate: int) -> list[float]:
         """Generate embedding using resemblyzer."""
         try:
-            from resemblyzer import preprocess_wav
 
             # Preprocess audio
             if sample_rate != 16000:
@@ -225,14 +222,14 @@ class LocalVoiceEmbeddingProvider(VoiceEmbeddingProvider):
 class VoiceIdentificationResult:
     """Result from voice identification."""
 
-    user_id: Optional[str] = None
-    user_name: Optional[str] = None
+    user_id: str | None = None
+    user_name: str | None = None
     confidence: float = 0.0
     method: IdentificationMethod = IdentificationMethod.DEFAULT
     is_identified: bool = False
 
     # Match details
-    matched_profile_id: Optional[str] = None
+    matched_profile_id: str | None = None
     similarity_scores: dict[str, float] = field(default_factory=dict)
 
     # Timing
@@ -268,8 +265,8 @@ class VoiceIdentificationSystem:
 
     def __init__(
         self,
-        config: Optional[UserManagerConfig] = None,
-        embedding_provider: Optional[VoiceEmbeddingProvider] = None,
+        config: UserManagerConfig | None = None,
+        embedding_provider: VoiceEmbeddingProvider | None = None,
     ):
         self.config = config or UserManagerConfig()
         self._embedding_provider = embedding_provider or LocalVoiceEmbeddingProvider()
@@ -498,7 +495,7 @@ class VoiceIdentificationSystem:
 
         return float(np.dot(vec1, vec2) / (norm1 * norm2))
 
-    def get_profile(self, user_id: str) -> Optional[VoiceProfile]:
+    def get_profile(self, user_id: str) -> VoiceProfile | None:
         """Get voice profile for a user."""
         return self._profiles.get(user_id)
 
@@ -577,14 +574,14 @@ class VoiceIdentificationSystem:
 
 
 def create_voice_id_system(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> VoiceIdentificationSystem:
     """Create a voice identification system."""
     return VoiceIdentificationSystem(config)
 
 
 async def create_initialized_voice_id_system(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> VoiceIdentificationSystem:
     """Create and initialize a voice identification system."""
     system = VoiceIdentificationSystem(config)

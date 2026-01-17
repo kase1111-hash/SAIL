@@ -125,9 +125,9 @@ class ResponseParser:
             # Check for section markers
             lower_line = line.lower()
 
-            if any(marker in lower_line for marker in ["step", "to do", "action"]):
-                if re.match(r"^\d+[\.\)]\s*", line):
-                    current_section = "steps"
+            # Numbered lists are steps
+            if re.match(r"^\d+[\.\)]\s*", line):
+                current_section = "steps"
 
             if any(marker in lower_line for marker in ["warning", "caution", "important", "⚠"]):
                 current_section = "warnings"

@@ -9,36 +9,34 @@ Provides jurisdiction-aware knowledge retrieval across multiple domains:
 """
 
 from src.knowledge.base import (
-    # Domain types
-    KnowledgeDomainType,
-    KnowledgeCategory,
-    KnowledgeRelevance,
-    JurisdictionLevel,
     # Data models
     Jurisdiction,
-    KnowledgeItem,
-    KnowledgeQuery,
-    KnowledgeResult,
-    # Base class
-    KnowledgeDomain,
+    JurisdictionLevel,
+    KnowledgeCategory,
     # Configuration
     KnowledgeConfig,
+    # Base class
+    KnowledgeDomain,
+    # Domain types
+    KnowledgeDomainType,
+    KnowledgeItem,
+    KnowledgeQuery,
+    KnowledgeRelevance,
+    KnowledgeResult,
 )
-
 from src.knowledge.manager import (
-    KnowledgeManager,
     KnowledgeEvent,
     KnowledgeEventType,
-    create_knowledge_manager,
+    KnowledgeManager,
     create_initialized_knowledge_manager,
+    create_knowledge_manager,
 )
-
 from src.knowledge.retrieval import (
+    EmbeddingProvider,
+    LocalEmbeddingProvider,
     RAGPipeline,
     RAGResult,
     VectorStore,
-    EmbeddingProvider,
-    LocalEmbeddingProvider,
     create_rag_pipeline,
 )
 

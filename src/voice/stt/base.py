@@ -7,9 +7,9 @@ Provides abstract base class for speech-to-text implementations.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import AsyncIterator
 
 import numpy as np
 
@@ -208,6 +208,6 @@ class STTProvider(ABC):
         await self.load_model()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.unload_model()

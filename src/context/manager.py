@@ -11,20 +11,20 @@ import asyncio
 import logging
 import threading
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from src.context.base import (
     ContextConfig,
     ContextDepthMode,
     ContextEntry,
-    ContextSummary,
     ContextTier,
     EntryPriority,
     EntryType,
 )
-from src.context.buffer import MultiTierBuffer, TierStats
+from src.context.buffer import MultiTierBuffer
 from src.context.persistence import ContextEncryption, ContextStore
 
 if TYPE_CHECKING:
@@ -501,14 +501,13 @@ class ContextBufferManager:
             for entry in entries:
                 if entry.tier == ContextTier.BACKGROUND:
                     self._buffer.add_to_background(entry)
+                # Add to appropriate tier based on age
+                elif entry.age_seconds < self._config.immediate_duration_seconds:
+                    self._buffer._tiers[ContextTier.IMMEDIATE].add(entry)
+                elif entry.age_seconds < self._config.short_term_duration_seconds:
+                    self._buffer._tiers[ContextTier.SHORT_TERM].add(entry)
                 else:
-                    # Add to appropriate tier based on age
-                    if entry.age_seconds < self._config.immediate_duration_seconds:
-                        self._buffer._tiers[ContextTier.IMMEDIATE].add(entry)
-                    elif entry.age_seconds < self._config.short_term_duration_seconds:
-                        self._buffer._tiers[ContextTier.SHORT_TERM].add(entry)
-                    else:
-                        self._buffer._tiers[ContextTier.SESSION].add(entry)
+                    self._buffer._tiers[ContextTier.SESSION].add(entry)
 
             # Load summaries
             summaries = self._store.load_summaries()
@@ -624,7 +623,7 @@ class ContextBufferManager:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()
 

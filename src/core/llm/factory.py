@@ -50,7 +50,7 @@ class LLMProviderFactory:
             provider_type = provider_type.value
 
         if provider_type == "ollama":
-            from .ollama import OllamaProvider, DEFAULT_OLLAMA_URL
+            from .ollama import DEFAULT_OLLAMA_URL, OllamaProvider
 
             return OllamaProvider(
                 model=model,
@@ -59,7 +59,7 @@ class LLMProviderFactory:
             )
 
         elif provider_type in ("llamacpp", "llama.cpp", "llama-cpp"):
-            from .llamacpp import LlamaCppProvider, DEFAULT_LLAMACPP_URL
+            from .llamacpp import DEFAULT_LLAMACPP_URL, LlamaCppProvider
 
             return LlamaCppProvider(
                 model=model,

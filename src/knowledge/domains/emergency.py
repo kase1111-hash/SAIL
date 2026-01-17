@@ -14,20 +14,17 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
 
 from src.knowledge.base import (
+    JurisdictionLevel,
+    KnowledgeCategory,
     KnowledgeDomain,
     KnowledgeDomainType,
-    KnowledgeCategory,
     KnowledgeItem,
     KnowledgeQuery,
-    KnowledgeResult,
     KnowledgeRelevance,
-    Jurisdiction,
-    JurisdictionLevel,
+    KnowledgeResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -696,7 +693,7 @@ class EmergencyKnowledgeDomain(KnowledgeDomain):
     Emergency protocols knowledge domain.
     """
 
-    def __init__(self, data_path: Optional[Path] = None):
+    def __init__(self, data_path: Path | None = None):
         super().__init__(KnowledgeDomainType.EMERGENCY, data_path)
 
     async def load(self) -> bool:
@@ -828,6 +825,6 @@ class EmergencyKnowledgeDomain(KnowledgeDomain):
 # ============================================================================
 
 
-def create_emergency_domain(data_path: Optional[Path] = None) -> EmergencyKnowledgeDomain:
+def create_emergency_domain(data_path: Path | None = None) -> EmergencyKnowledgeDomain:
     """Create an emergency knowledge domain instance."""
     return EmergencyKnowledgeDomain(data_path)

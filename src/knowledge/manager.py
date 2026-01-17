@@ -10,29 +10,27 @@ Orchestrates the complete knowledge domain system including:
 
 from __future__ import annotations
 
-import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.knowledge.base import (
+    Jurisdiction,
+    KnowledgeCategory,
+    KnowledgeConfig,
     KnowledgeDomain,
     KnowledgeDomainType,
-    KnowledgeCategory,
     KnowledgeItem,
     KnowledgeQuery,
     KnowledgeResult,
-    KnowledgeRelevance,
-    KnowledgeConfig,
-    Jurisdiction,
 )
-from src.knowledge.retrieval import RAGPipeline, RAGResult, create_rag_pipeline
+from src.knowledge.domains.emergency import EmergencyKnowledgeDomain
+from src.knowledge.domains.financial import FinancialKnowledgeDomain
 from src.knowledge.domains.legal import LegalKnowledgeDomain
 from src.knowledge.domains.safety import SafetyKnowledgeDomain
-from src.knowledge.domains.financial import FinancialKnowledgeDomain
-from src.knowledge.domains.emergency import EmergencyKnowledgeDomain
+from src.knowledge.retrieval import RAGPipeline, create_rag_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +45,7 @@ class KnowledgeEvent:
     """Event from the knowledge system."""
 
     event_type: str
-    domain: Optional[KnowledgeDomainType] = None
+    domain: KnowledgeDomainType | None = None
     data: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -77,7 +75,7 @@ class KnowledgeManager:
 
     def __init__(
         self,
-        config: Optional[KnowledgeConfig] = None,
+        config: KnowledgeConfig | None = None,
     ):
         self.config = config or KnowledgeConfig()
 
@@ -85,7 +83,7 @@ class KnowledgeManager:
         self._domains: dict[KnowledgeDomainType, KnowledgeDomain] = {}
 
         # RAG pipeline
-        self._rag_pipeline: Optional[RAGPipeline] = None
+        self._rag_pipeline: RAGPipeline | None = None
         self._rag_enabled = self.config.enable_rag
 
         # Current jurisdiction
@@ -100,7 +98,7 @@ class KnowledgeManager:
 
         # Statistics
         self._query_count = 0
-        self._last_query_time: Optional[datetime] = None
+        self._last_query_time: datetime | None = None
 
     @property
     def jurisdiction(self) -> Jurisdiction:
@@ -206,11 +204,11 @@ class KnowledgeManager:
     async def query(
         self,
         query_text: str,
-        domain: Optional[KnowledgeDomainType] = None,
-        category: Optional[KnowledgeCategory] = None,
-        jurisdiction: Optional[Jurisdiction] = None,
+        domain: KnowledgeDomainType | None = None,
+        category: KnowledgeCategory | None = None,
+        jurisdiction: Jurisdiction | None = None,
         max_results: int = 5,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> KnowledgeResult:
         """
         Query the knowledge base.
@@ -313,7 +311,7 @@ class KnowledgeManager:
 
     async def get_traffic_stop_guidance(
         self,
-        jurisdiction: Optional[Jurisdiction] = None,
+        jurisdiction: Jurisdiction | None = None,
     ) -> KnowledgeResult:
         """
         Get traffic stop guidance for a jurisdiction.
@@ -413,9 +411,9 @@ class KnowledgeManager:
     def update_jurisdiction_from_location(
         self,
         country: str,
-        state: Optional[str] = None,
-        county: Optional[str] = None,
-        city: Optional[str] = None,
+        state: str | None = None,
+        county: str | None = None,
+        city: str | None = None,
     ) -> None:
         """
         Update jurisdiction based on location data.
@@ -443,8 +441,8 @@ class KnowledgeManager:
     def _emit_event(
         self,
         event_type: str,
-        domain: Optional[KnowledgeDomainType] = None,
-        data: Optional[dict[str, Any]] = None,
+        domain: KnowledgeDomainType | None = None,
+        data: dict[str, Any] | None = None,
     ) -> None:
         """Emit a knowledge event."""
         event = KnowledgeEvent(
@@ -499,14 +497,14 @@ class KnowledgeManager:
 
 
 def create_knowledge_manager(
-    config: Optional[KnowledgeConfig] = None,
+    config: KnowledgeConfig | None = None,
 ) -> KnowledgeManager:
     """Create a knowledge manager instance."""
     return KnowledgeManager(config)
 
 
 async def create_initialized_knowledge_manager(
-    config: Optional[KnowledgeConfig] = None,
+    config: KnowledgeConfig | None = None,
 ) -> KnowledgeManager:
     """Create and initialize a knowledge manager."""
     manager = KnowledgeManager(config)

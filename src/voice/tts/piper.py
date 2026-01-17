@@ -12,9 +12,9 @@ import io
 import json
 import logging
 import wave
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AsyncIterator
 
 import numpy as np
 
@@ -209,7 +209,7 @@ class PiperProvider(TTSProvider):
 
             # Use piper's download utility if available
             try:
-                from piper.download import get_voices, ensure_voice_exists
+                from piper.download import ensure_voice_exists, get_voices
 
                 # This will download the voice if needed
                 model_path = ensure_voice_exists(

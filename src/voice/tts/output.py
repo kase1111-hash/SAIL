@@ -7,18 +7,17 @@ and the respect protocol for immediate stop command handling.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import queue
 import threading
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
 
 import numpy as np
 
-from src.voice.tts.base import SpeechPriority, SpeechRequest, SpeechState
+from src.voice.tts.base import SpeechPriority, SpeechRequest
 
 logger = logging.getLogger(__name__)
 
@@ -493,6 +492,6 @@ class AudioOutputManager:
         self.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # noqa: ANN001
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""
         self.stop()

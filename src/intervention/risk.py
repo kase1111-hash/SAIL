@@ -9,15 +9,15 @@ import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from .base import (
-    RiskLevel,
+    InterventionConfig,
+    InterventionMode,
+    RiskAssessment,
     RiskCategory,
     RiskFactor,
-    RiskAssessment,
-    InterventionMode,
-    InterventionConfig,
+    RiskLevel,
 )
 
 logger = logging.getLogger(__name__)
@@ -198,7 +198,7 @@ class RiskAssessmentEngine:
     and other sources into a unified risk score with mode recommendations.
     """
 
-    def __init__(self, config: Optional[InterventionConfig] = None):
+    def __init__(self, config: InterventionConfig | None = None):
         self.config = config or InterventionConfig()
 
         # Category weights (can be customized)
@@ -218,7 +218,7 @@ class RiskAssessmentEngine:
     def assess(
         self,
         context: dict[str, Any],
-        detected_factors: Optional[list[RiskFactor]] = None,
+        detected_factors: list[RiskFactor] | None = None,
     ) -> RiskAssessment:
         """
         Assess risk from context and detected factors.
@@ -332,7 +332,7 @@ class RiskAssessmentEngine:
         self,
         pattern_name: str,
         score: float,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RiskFactor:
         """Create a risk factor from a known pattern."""
         pattern = RISK_PATTERNS.get(pattern_name, {})
@@ -471,7 +471,7 @@ class RiskPatternDetector:
         observation["timestamp"] = datetime.now()
         self._behavior_history.append(observation)
 
-    def detect_erratic_driving(self) -> Optional[RiskFactor]:
+    def detect_erratic_driving(self) -> RiskFactor | None:
         """Detect erratic driving patterns."""
         # Look for rapid speed changes, unusual stopping patterns, etc.
         recent = [
@@ -504,7 +504,7 @@ class RiskPatternDetector:
 
         return None
 
-    def detect_pressure_tactics(self, conversation_text: str) -> Optional[RiskFactor]:
+    def detect_pressure_tactics(self, conversation_text: str) -> RiskFactor | None:
         """Detect pressure tactics in conversation."""
         pressure_phrases = [
             "act now",
@@ -537,7 +537,7 @@ class RiskPatternDetector:
 
         return None
 
-    def detect_financial_risk(self, conversation_text: str) -> Optional[RiskFactor]:
+    def detect_financial_risk(self, conversation_text: str) -> RiskFactor | None:
         """Detect financial risk indicators."""
         financial_phrases = [
             "wire",

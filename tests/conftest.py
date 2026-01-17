@@ -3,7 +3,7 @@ SAIL Test Configuration and Fixtures
 """
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +44,11 @@ def sample_config() -> dict[str, Any]:
             "base_url": "http://localhost:11434",
         },
         "voice": {
-            "wake_word": "hey sail",
+            "wake_word": {
+                "phrase": "hey sail",
+                "engine": "openwakeword",
+                "sensitivity": 0.5,
+            },
             "stt": {
                 "engine": "whisper",
                 "model": "base",

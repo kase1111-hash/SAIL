@@ -7,13 +7,12 @@ including user sessions, voice profiles, and permission models.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -124,7 +123,7 @@ class VoiceProfile:
             self.enrollment_complete = True
             self.is_enrolled = True
 
-    def get_centroid(self) -> Optional[list[float]]:
+    def get_centroid(self) -> list[float] | None:
         """Get the centroid (average) of all embeddings."""
         if not self.embeddings:
             return None
@@ -199,11 +198,11 @@ class User:
     restrictions: list[UserRestriction] = field(default_factory=list)
 
     # Guardian relationship
-    guardian_id: Optional[str] = None
+    guardian_id: str | None = None
     dependents: list[str] = field(default_factory=list)
 
     # Voice profile
-    voice_profile: Optional[VoiceProfile] = None
+    voice_profile: VoiceProfile | None = None
 
     # Custom briefings and preferences
     custom_briefings: list[str] = field(default_factory=list)
@@ -211,7 +210,7 @@ class User:
 
     # Account metadata
     created_at: datetime = field(default_factory=datetime.now)
-    last_active: Optional[datetime] = None
+    last_active: datetime | None = None
     is_active: bool = True
 
     def __post_init__(self) -> None:
@@ -326,7 +325,7 @@ class UserSession:
 
     session_id: str = field(default_factory=lambda: str(uuid4()))
     user_id: str = ""
-    user: Optional[User] = None
+    user: User | None = None
 
     # Session state
     state: SessionState = SessionState.ACTIVE
@@ -336,14 +335,14 @@ class UserSession:
     # Timing
     started_at: datetime = field(default_factory=datetime.now)
     last_activity: datetime = field(default_factory=datetime.now)
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
 
     # Session configuration
     session_timeout_seconds: int = 1800  # 30 minutes default
 
     # Guardian control
-    guardian_controlled_by: Optional[str] = None
-    guardian_control_reason: Optional[str] = None
+    guardian_controlled_by: str | None = None
+    guardian_control_reason: str | None = None
 
     # Interaction tracking
     interaction_count: int = 0
@@ -492,8 +491,8 @@ class UserEvent:
     """Event from the user management system."""
 
     event_type: UserEventType
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
+    user_id: str | None = None
+    session_id: str | None = None
     data: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 

@@ -5,8 +5,6 @@ Comprehensive unit tests for the voice output (TTS) pipeline components.
 """
 
 import numpy as np
-import pytest
-
 from src.voice.tts.base import (
     SpeechMode,
     SpeechPriority,
@@ -19,6 +17,11 @@ from src.voice.tts.base import (
     preprocess_text_for_speech,
     split_text_into_sentences,
 )
+from src.voice.tts.manager import (
+    SpeakResult,
+    VoiceOutputEvent,
+    VoiceOutputState,
+)
 from src.voice.tts.output import (
     AudioOutputManager,
     OutputState,
@@ -26,12 +29,6 @@ from src.voice.tts.output import (
     QueuedAudio,
 )
 from src.voice.tts.piper import PiperConfig
-from src.voice.tts.manager import (
-    SpeakResult,
-    VoiceOutputEvent,
-    VoiceOutputState,
-)
-
 
 # ============================================================================
 # TTS Config Tests

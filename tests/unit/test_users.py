@@ -10,28 +10,23 @@ Tests cover:
 - Custom briefings
 """
 
-import asyncio
+import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-import tempfile
 
-import pytest
 import numpy as np
-
+import pytest
 from src.users.base import (
-    UserRole,
     AccessLevel,
-    UserRestriction,
     IdentificationMethod,
     SessionState,
-    VoiceProfile,
     User,
-    UserSession,
-    UserEvent,
-    UserEventType,
     UserManagerConfig,
+    UserRestriction,
+    UserRole,
+    UserSession,
+    VoiceProfile,
 )
-
 
 # ============================================================================
 # User Model Tests
@@ -342,7 +337,6 @@ class TestGuardianAlerts:
         from src.users.guardian import (
             GuardianAlertSystem,
             GuardianAlertType,
-            GuardianAlertLevel,
         )
 
         system = GuardianAlertSystem()
@@ -574,7 +568,7 @@ class TestCustomBriefings:
 
     def test_get_briefings_by_category(self):
         """Test getting briefings by category."""
-        from src.users.briefings import CustomBriefingSystem, BriefingCategory
+        from src.users.briefings import BriefingCategory, CustomBriefingSystem
 
         system = CustomBriefingSystem()
 

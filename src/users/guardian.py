@@ -8,20 +8,16 @@ dependents encounter concerning situations.
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.users.base import (
     User,
-    UserRole,
-    UserSession,
     UserEvent,
     UserEventType,
     UserManagerConfig,
@@ -111,12 +107,12 @@ class GuardianAlert:
     details: dict[str, Any] = field(default_factory=dict)
 
     # Location context
-    location: Optional[dict[str, Any]] = None
+    location: dict[str, Any] | None = None
 
     # Timing
     created_at: datetime = field(default_factory=datetime.now)
-    expires_at: Optional[datetime] = None
-    acknowledged_at: Optional[datetime] = None
+    expires_at: datetime | None = None
+    acknowledged_at: datetime | None = None
 
     # Delivery
     channels: list[NotificationChannel] = field(default_factory=lambda: [NotificationChannel.IN_APP])
@@ -130,7 +126,7 @@ class GuardianAlert:
 
     # Actions
     available_actions: list[str] = field(default_factory=list)
-    action_taken: Optional[str] = None
+    action_taken: str | None = None
 
     def acknowledge(self, note: str = "") -> None:
         """Acknowledge the alert."""
@@ -331,7 +327,7 @@ class GuardianAlertSystem:
     System for managing guardian alerts and notifications.
     """
 
-    def __init__(self, config: Optional[UserManagerConfig] = None):
+    def __init__(self, config: UserManagerConfig | None = None):
         self.config = config or UserManagerConfig()
 
         # Alert queue and history
@@ -357,10 +353,10 @@ class GuardianAlertSystem:
         alert_type: GuardianAlertType,
         dependent: User,
         guardian: User,
-        details: Optional[dict[str, Any]] = None,
-        location: Optional[dict[str, Any]] = None,
-        custom_message: Optional[str] = None,
-    ) -> Optional[GuardianAlert]:
+        details: dict[str, Any] | None = None,
+        location: dict[str, Any] | None = None,
+        custom_message: str | None = None,
+    ) -> GuardianAlert | None:
         """
         Create a guardian alert.
 
@@ -498,12 +494,11 @@ class GuardianAlertSystem:
                     delivered_any = True
                 except Exception as e:
                     logger.error(f"Failed to deliver alert via {channel.value}: {e}")
-            else:
-                # Default handling for in-app notifications
-                if channel == NotificationChannel.IN_APP:
-                    alert.delivered_via.append(channel)
-                    delivered_any = True
-                    logger.info(f"Alert {alert.alert_id} queued for in-app delivery")
+            # Default handling for in-app notifications
+            elif channel == NotificationChannel.IN_APP:
+                alert.delivered_via.append(channel)
+                delivered_any = True
+                logger.info(f"Alert {alert.alert_id} queued for in-app delivery")
 
         return delivered_any
 
@@ -543,14 +538,14 @@ class GuardianAlertSystem:
             and not alert.is_expired
         ]
 
-    def get_alert(self, alert_id: str) -> Optional[GuardianAlert]:
+    def get_alert(self, alert_id: str) -> GuardianAlert | None:
         """Get a specific alert."""
         return self._alert_history.get(alert_id)
 
     def get_alert_history(
         self,
-        guardian_id: Optional[str] = None,
-        dependent_id: Optional[str] = None,
+        guardian_id: str | None = None,
+        dependent_id: str | None = None,
         limit: int = 50,
     ) -> list[GuardianAlert]:
         """Get alert history with optional filters."""
@@ -718,7 +713,7 @@ class GuardianAlertTrigger:
 
 
 def create_guardian_alert_system(
-    config: Optional[UserManagerConfig] = None,
+    config: UserManagerConfig | None = None,
 ) -> GuardianAlertSystem:
     """Create a guardian alert system."""
     return GuardianAlertSystem(config)
