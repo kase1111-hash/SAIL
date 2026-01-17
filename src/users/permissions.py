@@ -208,24 +208,29 @@ class PermissionChecker:
         # Check restrictions
         restrictions_triggered = self._check_restrictions(user, permission, context_factors)
 
+        # Determine if allowed and reason
+        if restrictions_triggered:
+            allowed = False
+            reason = self._get_restriction_reason(restrictions_triggered[0])
+            requires_guardian = user.has_guardian
+        elif has_base_permission or has_access_grant:
+            allowed = True
+            reason = "Permission granted"
+            requires_guardian = False
+        else:
+            allowed = False
+            reason = f"Permission '{permission.value}' not available for role '{user.role.value}'"
+            requires_guardian = False
+
         # Build result
         result = PermissionResult(
+            allowed=allowed,
             permission=permission,
+            reason=reason,
+            requires_guardian=requires_guardian,
             context_factors=context_factors,
             restrictions_triggered=restrictions_triggered,
         )
-
-        # Determine if allowed
-        if restrictions_triggered:
-            result.allowed = False
-            result.reason = self._get_restriction_reason(restrictions_triggered[0])
-            result.requires_guardian = user.has_guardian
-        elif has_base_permission or has_access_grant:
-            result.allowed = True
-            result.reason = "Permission granted"
-        else:
-            result.allowed = False
-            result.reason = f"Permission '{permission.value}' not available for role '{user.role.value}'"
 
         # Log if permission denied
         if not result.allowed:

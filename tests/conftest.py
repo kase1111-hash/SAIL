@@ -44,7 +44,11 @@ def sample_config() -> dict[str, Any]:
             "base_url": "http://localhost:11434",
         },
         "voice": {
-            "wake_word": "hey sail",
+            "wake_word": {
+                "phrase": "hey sail",
+                "engine": "openwakeword",
+                "sensitivity": 0.5,
+            },
             "stt": {
                 "engine": "whisper",
                 "model": "base",

@@ -202,7 +202,13 @@ def load_config(
     # Load from file if available
     if config_path:
         path = Path(config_path) if isinstance(config_path, str) else config_path
-        config_data = load_yaml_file(path)
+        try:
+            config_data = load_yaml_file(path)
+        except ConfigurationError:
+            if strict:
+                raise
+            # Return defaults on file not found if not strict
+            return Config()
     else:
         found_path = find_config_file()
         if found_path:

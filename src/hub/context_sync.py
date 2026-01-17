@@ -240,8 +240,12 @@ class ContextSync:
                     self._entry_versions[entry.entry_id] = entry.version
 
             # Merge accepted entries to context manager
-            if self._context_manager and merged_entries:
-                await self.merge_entries(node_id, [e.to_dict() for e in merged_entries])
+            if merged_entries:
+                if self._context_manager:
+                    await self.merge_entries(node_id, [e.to_dict() for e in merged_entries])
+                else:
+                    # Increment hub version even without context manager
+                    self._hub_version += len(merged_entries)
 
             # Update node state
             state.last_sync_time = datetime.now()

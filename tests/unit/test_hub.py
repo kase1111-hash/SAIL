@@ -248,7 +248,7 @@ class TestHubCoordinator:
         return HubConfig(
             require_auth=True,
             max_nodes=5,
-            heartbeat_interval_seconds=1,
+            heartbeat_interval_seconds=5,
         )
 
     @pytest.fixture

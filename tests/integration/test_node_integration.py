@@ -48,8 +48,8 @@ class TestHubNodeIntegration:
         return HubConfig(
             port=8420,
             max_nodes=10,
-            heartbeat_interval_seconds=1,
-            heartbeat_timeout_seconds=5,
+            heartbeat_interval_seconds=5,
+            heartbeat_timeout_seconds=15,
         )
 
     @pytest.fixture
