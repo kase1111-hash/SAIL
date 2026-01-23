@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/sail-project/sail/security/advisories/new
+    about: Please report security vulnerabilities privately. Do not open a public issue.
+  - name: Questions & Discussions
+    url: https://github.com/sail-project/sail/discussions
+    about: Ask questions and discuss SAIL in GitHub Discussions

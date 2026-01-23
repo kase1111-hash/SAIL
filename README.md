@@ -173,34 +173,58 @@ SAIL operates under explicit behavioral constraints:
 
 ## Roadmap
 
-### Phase 1: Voice I/O Foundation
-- [ ] Local wake word detection
-- [ ] Whisper integration for speech-to-text
-- [ ] Local TTS with natural voice
-- [ ] Basic query-response loop
+### Phase 1-2: Core Foundation
+- [x] Project structure with Python 3.11+ support
+- [x] Configuration management with YAML schema validation
+- [x] CLI interface with Click and Rich formatting
+- [x] Docker development environment
 
-### Phase 2: Context Buffer
-- [ ] Rolling memory file implementation
-- [ ] Adjustable depth configuration
-- [ ] Context persistence across sessions
+### Phase 3-4: Voice I/O Foundation
+- [x] Local wake word detection (OpenWakeWord, Porcupine)
+- [x] Whisper integration for speech-to-text
+- [x] Local TTS with natural voice (Piper, Coqui)
+- [x] Basic query-response loop
+- [x] Voice command handling
 
-### Phase 3: Situational Awareness
-- [ ] GPS integration
-- [ ] Motion state detection
-- [ ] Calendar/time awareness
-- [ ] Intervention mode framework
+### Phase 5: Context Buffer
+- [x] Rolling memory file implementation
+- [x] Adjustable depth configuration
+- [x] Context persistence across sessions
+- [x] Crisis mode context locking
 
-### Phase 4: Knowledge Domains
-- [ ] Jurisdiction detection (state/country)
-- [ ] Legal knowledge base (traffic, employment, contracts)
-- [ ] Safety protocol library
-- [ ] Scam pattern database
+### Phase 6: Sensor Fusion
+- [x] GPS integration with jurisdiction detection
+- [x] Motion state detection
+- [x] Calendar/time awareness
+- [x] Audio environment analysis
+- [x] Biometric integration framework
 
-### Phase 5: Family Deployment
-- [ ] Multi-user configuration
-- [ ] Role-based access
-- [ ] Guardian alert system
-- [ ] Room node deployment
+### Phase 7: Intervention Engine
+- [x] Four intervention modes (Ambient/Advisory/Guardian/Crisis)
+- [x] Risk assessment engine
+- [x] Mode transition logic
+- [x] Proportionality checking
+
+### Phase 8: Knowledge Domains
+- [x] Jurisdiction detection (state/country)
+- [x] Legal knowledge base (traffic, employment, contracts)
+- [x] Safety protocol library
+- [x] Financial protection patterns
+- [x] Emergency procedures
+
+### Phase 9: Multi-User & Family System
+- [x] Multi-user configuration
+- [x] Role-based access control
+- [x] Guardian alert system
+- [x] Voice-based user identification
+- [x] Per-user context isolation
+
+### Phase 10: Node Deployment & Integration
+- [x] Hub coordinator with request routing
+- [x] Room node support (Raspberry Pi)
+- [x] Mobile app integration framework
+- [x] Vehicle node with OBD-II integration
+- [x] Context synchronization
 
 ## Prior Art and Influences
 
@@ -210,11 +234,17 @@ SAIL operates under explicit behavioral constraints:
 
 ## License
 
-[TBD - considering AGPL or similar copyleft to ensure sovereignty principles propagate]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
+
 This is a family safety tool. Contributions that compromise privacy, add telemetry, or introduce cloud dependencies will not be accepted.
+
+## Security
+
+For information about reporting security vulnerabilities, please see our [Security Policy](SECURITY.md).
 
 ---
 
