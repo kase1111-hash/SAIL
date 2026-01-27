@@ -94,6 +94,20 @@ class UserManager:
         # Default user for anonymous/unidentified access
         self._default_user: User | None = None
 
+    def _safe_create_task(self, coro: Any, name: str | None = None) -> asyncio.Task[Any]:
+        """Create a task with error handling to prevent silent failures."""
+        task = asyncio.create_task(coro, name=name)
+        task.add_done_callback(self._on_task_done)
+        return task
+
+    def _on_task_done(self, task: asyncio.Task[Any]) -> None:
+        """Handle task completion, logging any exceptions."""
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error(f"Background task {task.get_name()} failed: {exc}")
+
     async def initialize(self) -> bool:
         """Initialize the user manager."""
         logger.info("Initializing user manager...")
@@ -254,7 +268,7 @@ class UserManager:
         logger.info(f"Registered user: {name} (role={role.value})")
 
         # Save
-        asyncio.create_task(self._save_users())
+        self._safe_create_task(self._save_users(), name="save_users")
 
         return user
 
