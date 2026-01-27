@@ -549,8 +549,8 @@ class HubCoordinator:
 
     async def _handle_intervention_trigger(self, request: Request, node: Node) -> dict[str, Any]:
         """Handle intervention trigger from a node."""
-        request.payload.get("type", "")
-        request.payload.get("context", {})
+        _intervention_type = request.payload.get("type", "")
+        _context = request.payload.get("context", {})
 
         # Forward to intervention engine (would be integrated)
         return {
@@ -560,7 +560,7 @@ class HubCoordinator:
 
     async def _handle_user_identify(self, request: Request, node: Node) -> dict[str, Any]:
         """Handle user identification request."""
-        request.payload.get("voice_sample")
+        _voice_sample = request.payload.get("voice_sample", None)
         confidence = request.payload.get("confidence", 0.0)
 
         # Would integrate with user identification system

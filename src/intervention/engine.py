@@ -78,11 +78,9 @@ class InterventionQueue:
 
     def remove(self, intervention_id: str) -> bool:
         """Remove specific intervention by ID."""
-        for i, intervention in enumerate(self._queue):
-            if intervention.id == intervention_id:
-                self._queue.pop(i)
-                return True
-        return False
+        original_len = len(self._queue)
+        self._queue = [i for i in self._queue if i.id != intervention_id]
+        return len(self._queue) < original_len
 
     def _cleanup_expired(self) -> None:
         """Remove expired interventions."""
@@ -157,6 +155,20 @@ class InterventionEngine:
 
         # Running state
         self._running = False
+
+    def _safe_create_task(self, coro: Any, name: str | None = None) -> asyncio.Task[Any]:
+        """Create a task with error handling to prevent silent failures."""
+        task = asyncio.create_task(coro, name=name)
+        task.add_done_callback(self._on_task_done)
+        return task
+
+    def _on_task_done(self, task: asyncio.Task[Any]) -> None:
+        """Handle task completion, logging any exceptions."""
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error(f"Background task {task.get_name()} failed: {exc}")
 
     @property
     def current_mode(self) -> InterventionMode:
@@ -412,7 +424,7 @@ class InterventionEngine:
 
     def force_mode(self, mode: InterventionMode, reason: str = "Manual override") -> None:
         """Force transition to a specific mode."""
-        asyncio.create_task(self._transition_to(mode, reason))
+        self._safe_create_task(self._transition_to(mode, reason), name="force_mode_transition")
 
     def _emit_event(self, event_type: InterventionEventType, data: Any) -> None:
         """Emit an intervention event."""
