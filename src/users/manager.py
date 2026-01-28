@@ -327,12 +327,29 @@ class UserManager:
         Returns:
             Tuple of (User or None, confidence score)
         """
-        # Explicit identification
+        # Explicit identification - requires voice confirmation for security
+        # to prevent impersonation attacks
         if explicit_name:
             user = self.get_user_by_name(explicit_name)
             if user:
-                await self._start_session(user, IdentificationMethod.EXPLICIT, 1.0)
-                return user, 1.0
+                # Require voice verification if available to prevent impersonation
+                if audio is not None and self._voice_id:
+                    result = await self._voice_id.identify(audio, sample_rate)
+                    if result.is_identified and result.user_id == user.user_id:
+                        await self._start_session(user, IdentificationMethod.EXPLICIT, result.confidence)
+                        return user, result.confidence
+                    else:
+                        # Voice doesn't match claimed identity - reject
+                        logger.warning(f"Voice verification failed for explicit name '{explicit_name}'")
+                        return None, 0.0
+                elif not self._voice_id:
+                    # No voice ID system - allow explicit with reduced confidence
+                    await self._start_session(user, IdentificationMethod.EXPLICIT, 0.5)
+                    return user, 0.5
+                else:
+                    # No audio provided with explicit name - reject for security
+                    logger.warning(f"Explicit identification rejected: no audio for verification")
+                    return None, 0.0
 
         # Voice identification
         if audio is not None and self._voice_id:

@@ -66,7 +66,9 @@ class TierBuffer:
         self.max_age_seconds = max_age_seconds
         self.max_entries = max_entries
 
-        self._entries: deque[ContextEntry] = deque(maxlen=max_entries)
+        # Use deque without maxlen to prevent silent evictions that desync the index
+        # Manual eviction is handled in _evict_old_entries()
+        self._entries: deque[ContextEntry] = deque()
         self._entry_index: dict[str, ContextEntry] = {}
         self._lock = threading.RLock()
 
@@ -85,12 +87,12 @@ class TierBuffer:
                 self._update_entry(entry)
                 return
 
+            # Evict old entries BEFORE adding to prevent unbounded growth
+            self._evict_old_entries()
+
             # Add to buffer
             self._entries.append(entry)
             self._entry_index[entry.entry_id] = entry
-
-            # Evict old entries if needed
-            self._evict_old_entries()
 
     def _update_entry(self, entry: ContextEntry) -> None:
         """Update an existing entry."""

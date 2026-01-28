@@ -355,8 +355,25 @@ class Constitution:
 
     def _add_disclaimers_if_needed(self, response: str) -> str:
         """Add necessary disclaimers to response."""
-        # This is a simple implementation; production would be more sophisticated
-        return response
+        modified = response
+
+        # Check for medical content without disclaimer
+        violation = self._check_medical_disclaimer(response)
+        if violation and violation.severity == "warning":
+            # Add medical disclaimer if missing
+            medical_disclaimer = "\n\nPlease consult a medical professional for personalized advice."
+            if medical_disclaimer.strip() not in response:
+                modified += medical_disclaimer
+
+        # Check for legal content without disclaimer
+        violation = self._check_legal_disclaimer(response)
+        if violation and violation.severity == "warning":
+            # Add legal disclaimer if missing
+            legal_disclaimer = "\n\nLaws vary by jurisdiction. Consider consulting a legal professional for your specific situation."
+            if legal_disclaimer.strip() not in response:
+                modified += legal_disclaimer
+
+        return modified
 
     def _soften_language(self, response: str) -> str:
         """Soften harsh or judgmental language."""

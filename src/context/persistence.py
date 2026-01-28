@@ -514,10 +514,12 @@ class ContextStore:
             cursor = conn.cursor()
 
             query = "SELECT * FROM summaries ORDER BY timestamp DESC"
+            params: list[Any] = []
             if limit:
-                query += f" LIMIT {limit}"
+                query += " LIMIT ?"
+                params.append(limit)
 
-            cursor.execute(query)
+            cursor.execute(query, params)
             rows = cursor.fetchall()
 
             summaries = []
