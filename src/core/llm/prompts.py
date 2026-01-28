@@ -5,11 +5,57 @@ Manages prompt templates for consistent LLM interactions.
 Supports variable interpolation and constitutional constraint injection.
 """
 
+import html
 import re
 from dataclasses import dataclass, field
 from enum import Enum
 from string import Template
 from typing import Any
+
+
+# Maximum length for user-provided template variables to prevent DoS
+MAX_VARIABLE_LENGTH = 10000
+
+# Characters that could be used for prompt injection
+DANGEROUS_PATTERNS = [
+    r"(?i)ignore\s+(previous|above|all)\s+(instructions?|prompts?)",
+    r"(?i)disregard\s+(previous|above|all)",
+    r"(?i)forget\s+(everything|all|previous)",
+    r"(?i)new\s+instructions?:",
+    r"(?i)system\s*:",
+    r"(?i)\[INST\]",
+    r"(?i)<<SYS>>",
+    r"(?i)</s>",
+    r"(?i)<\|im_start\|>",
+    r"(?i)<\|im_end\|>",
+]
+
+
+def sanitize_template_value(value: Any, max_length: int = MAX_VARIABLE_LENGTH) -> str:
+    """
+    Sanitize a template variable value to prevent prompt injection.
+
+    Args:
+        value: The value to sanitize
+        max_length: Maximum allowed length
+
+    Returns:
+        Sanitized string value
+    """
+    # Convert to string
+    str_value = str(value) if value is not None else ""
+
+    # Truncate to max length
+    if len(str_value) > max_length:
+        str_value = str_value[:max_length] + "...[truncated]"
+
+    # Check for dangerous patterns
+    for pattern in DANGEROUS_PATTERNS:
+        if re.search(pattern, str_value):
+            # Replace dangerous content with sanitized version
+            str_value = re.sub(pattern, "[filtered]", str_value)
+
+    return str_value
 
 
 class PromptRole(str, Enum):
@@ -64,9 +110,15 @@ class PromptTemplate:
         if missing:
             raise ValueError(f"Missing required variables: {missing}")
 
+        # Sanitize all user-provided values to prevent prompt injection
+        sanitized_values = {
+            key: sanitize_template_value(value)
+            for key, value in values.items()
+        }
+
         # Render template
         tmpl = Template(self.template)
-        return tmpl.safe_substitute(values)
+        return tmpl.safe_substitute(sanitized_values)
 
     def validate(self, **kwargs: Any) -> list[str]:
         """

@@ -251,6 +251,8 @@ class GuardianModeHandler(ModeHandler):
         super().__init__(InterventionMode.GUARDIAN, config)
         self._pending_verifications: dict[str, Intervention] = {}
         self._alert_escalation_count: dict[str, int] = {}
+        # Track when verifications were created for cleanup
+        self._verification_timestamps: dict[str, datetime] = {}
 
     async def evaluate(
         self,
@@ -262,6 +264,9 @@ class GuardianModeHandler(ModeHandler):
         """
         if not self._active:
             return None
+
+        # Clean up expired verifications to prevent memory leak
+        self._cleanup_expired_verifications()
 
         # Check cooldown
         if not self.can_intervene():
@@ -330,6 +335,7 @@ class GuardianModeHandler(ModeHandler):
 
         if requires_verification:
             self._pending_verifications[intervention.id] = intervention
+            self._verification_timestamps[intervention.id] = datetime.now()
 
         return intervention
 
@@ -374,6 +380,19 @@ class GuardianModeHandler(ModeHandler):
 
         return alerts.get(factor.name, (None, None, []))
 
+    def _cleanup_expired_verifications(self) -> None:
+        """Remove verifications that have been pending for too long."""
+        max_age_seconds = 300.0  # 5 minutes
+        now = datetime.now()
+        expired_ids = [
+            vid for vid, timestamp in self._verification_timestamps.items()
+            if (now - timestamp).total_seconds() > max_age_seconds
+        ]
+        for vid in expired_ids:
+            self._pending_verifications.pop(vid, None)
+            self._verification_timestamps.pop(vid, None)
+            logger.debug(f"Cleaned up expired verification: {vid}")
+
     async def handle_response(
         self,
         intervention: Intervention,
@@ -382,6 +401,7 @@ class GuardianModeHandler(ModeHandler):
         """Handle user response to guardian alert."""
         # Remove from pending if it was a verification
         self._pending_verifications.pop(intervention.id, None)
+        self._verification_timestamps.pop(intervention.id, None)
 
         # Handle specific responses
         if "emergency" in response.response_type.lower() or "help" in (response.response_text or "").lower():

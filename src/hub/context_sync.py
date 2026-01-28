@@ -158,6 +158,8 @@ class ContextSync:
         # Version tracking
         self._hub_version = 0
         self._entry_versions: dict[str, int] = {}
+        # Track entry timestamps for LAST_WRITE_WINS conflict resolution
+        self._entry_timestamps: dict[str, datetime] = {}
 
         # Conflict tracking
         self._unresolved_conflicts: list[SyncConflict] = []
@@ -238,6 +240,7 @@ class ContextSync:
                     # Accept entry
                     merged_entries.append(entry)
                     self._entry_versions[entry.entry_id] = entry.version
+                    self._entry_timestamps[entry.entry_id] = entry.timestamp
 
             # Merge accepted entries to context manager
             if merged_entries:
@@ -342,8 +345,9 @@ class ContextSync:
         for entry_data in entries:
             try:
                 content = entry_data.get("content", "")
-                entry_data.get("entry_type", "user_input")
+                entry_type = entry_data.get("entry_type", "user_input")
                 metadata = entry_data.get("metadata", {})
+                metadata["entry_type"] = entry_type  # Preserve entry type
                 metadata["source_node"] = source_node_id
 
                 self._context_manager.add_entry(
@@ -376,11 +380,12 @@ class ContextSync:
 
         # Apply resolution strategy
         if self._strategy == SyncStrategy.LAST_WRITE_WINS:
-            # Compare timestamps
-            hub_time = datetime.now()  # Would need actual hub entry timestamp
-            if entry.timestamp > hub_time:
+            # Compare timestamps using stored hub entry timestamp
+            hub_time = self._entry_timestamps.get(entry.entry_id)
+            if hub_time is None or entry.timestamp > hub_time:
                 conflict.resolution = "node_accepted"
                 self._entry_versions[entry.entry_id] = entry.version
+                self._entry_timestamps[entry.entry_id] = entry.timestamp
             else:
                 conflict.resolution = "hub_kept"
 
@@ -390,6 +395,7 @@ class ContextSync:
         elif self._strategy == SyncStrategy.NODE_PRIORITY:
             conflict.resolution = "node_accepted"
             self._entry_versions[entry.entry_id] = entry.version
+            self._entry_timestamps[entry.entry_id] = entry.timestamp
 
         elif self._strategy == SyncStrategy.MERGE_ALL:
             # Accept both versions

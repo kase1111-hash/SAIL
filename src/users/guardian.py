@@ -331,8 +331,12 @@ class GuardianAlertSystem:
         self.config = config or UserManagerConfig()
 
         # Alert queue and history
-        self._pending_alerts: deque[GuardianAlert] = deque(maxlen=100)
+        # Use unlimited deque to prevent silent data loss
+        # Cleanup of old alerts is done in deliver_pending_alerts
+        self._pending_alerts: deque[GuardianAlert] = deque()
         self._alert_history: dict[str, GuardianAlert] = {}
+        # Maximum alerts to retain in queue before warning
+        self._max_pending_alerts = 500
 
         # Cooldown tracking (guardian_id -> alert_type -> last_sent)
         self._cooldowns: dict[str, dict[str, datetime]] = {}
@@ -418,6 +422,15 @@ class GuardianAlertSystem:
         self._pending_alerts.append(alert)
         self._alerts_created += 1
 
+        # Check queue size and log warning if growing too large
+        if len(self._pending_alerts) > self._max_pending_alerts:
+            logger.warning(
+                f"Guardian alert queue is large ({len(self._pending_alerts)} alerts). "
+                "Consider calling deliver_pending_alerts() more frequently."
+            )
+            # Clean up expired alerts to reclaim memory
+            self._cleanup_expired_pending_alerts()
+
         # Update cooldown
         self._set_cooldown(guardian.user_id, alert_type)
 
@@ -454,6 +467,15 @@ class GuardianAlertSystem:
         if guardian_id not in self._cooldowns:
             self._cooldowns[guardian_id] = {}
         self._cooldowns[guardian_id][alert_type.value] = datetime.now()
+
+    def _cleanup_expired_pending_alerts(self) -> None:
+        """Remove expired alerts from the pending queue."""
+        non_expired = deque()
+        while self._pending_alerts:
+            alert = self._pending_alerts.popleft()
+            if not alert.is_expired:
+                non_expired.append(alert)
+        self._pending_alerts = non_expired
 
     async def deliver_pending_alerts(self) -> int:
         """

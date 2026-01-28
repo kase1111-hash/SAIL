@@ -7,6 +7,7 @@ https://github.com/ggerganov/llama.cpp
 llama.cpp server provides an OpenAI-compatible API endpoint.
 """
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 
@@ -51,6 +52,7 @@ class LlamaCppProvider(LLMProvider):
         super().__init__(model=model, base_url=base_url)
         self.timeout = timeout
         self._client: httpx.AsyncClient | None = None
+        self._client_lock = asyncio.Lock()
 
     @property
     def provider_type(self) -> LLMProviderType:
@@ -58,13 +60,14 @@ class LlamaCppProvider(LLMProvider):
         return LLMProviderType.LLAMACPP
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                base_url=self.base_url,
-                timeout=httpx.Timeout(self.timeout, connect=10.0),
-            )
-        return self._client
+        """Get or create HTTP client (thread-safe)."""
+        async with self._client_lock:
+            if self._client is None or self._client.is_closed:
+                self._client = httpx.AsyncClient(
+                    base_url=self.base_url,
+                    timeout=httpx.Timeout(self.timeout, connect=10.0),
+                )
+            return self._client
 
     async def close(self) -> None:
         """Close the HTTP client."""
@@ -92,6 +95,7 @@ class LlamaCppProvider(LLMProvider):
             payload["max_tokens"] = config.max_tokens
             payload["temperature"] = config.temperature
             payload["top_p"] = config.top_p
+            payload["top_k"] = config.top_k  # Added missing top_k parameter
             payload["repeat_penalty"] = config.repeat_penalty
 
             if config.stop_sequences:

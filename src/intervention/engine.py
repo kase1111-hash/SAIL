@@ -147,7 +147,9 @@ class InterventionEngine:
         self._mode_history: deque[ModeTransition] = deque(maxlen=50)
         self._pending_escalation: InterventionMode | None = None
         self._pending_deescalation: InterventionMode | None = None
+        # Separate timers for escalation and de-escalation to prevent state collision
         self._escalation_timer: datetime | None = None
+        self._deescalation_timer: datetime | None = None
 
         # Callbacks
         self._event_callbacks: list[Callable[[InterventionEvent], None]] = []
@@ -238,6 +240,7 @@ class InterventionEngine:
             self._pending_escalation = None
             self._pending_deescalation = None
             self._escalation_timer = None
+            self._deescalation_timer = None
             return
 
         # Determine if escalating or de-escalating
@@ -288,16 +291,16 @@ class InterventionEngine:
 
         if self._pending_deescalation != target_mode:
             self._pending_deescalation = target_mode
-            self._escalation_timer = datetime.now()
+            self._deescalation_timer = datetime.now()
             return
 
-        # Check if delay has passed
-        if self._escalation_timer:
-            elapsed = (datetime.now() - self._escalation_timer).total_seconds()
+        # Check if delay has passed (use deescalation_timer, not escalation_timer)
+        if self._deescalation_timer:
+            elapsed = (datetime.now() - self._deescalation_timer).total_seconds()
             if elapsed >= required_delay:
                 await self._transition_to(target_mode, "Risk level reduced", assessment)
                 self._pending_deescalation = None
-                self._escalation_timer = None
+                self._deescalation_timer = None
 
     async def _transition_to(
         self,

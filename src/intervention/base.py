@@ -292,7 +292,7 @@ class ModeTransition:
         return {
             "from_mode": self.from_mode.value,
             "to_mode": self.to_mode.value,
-            "reason": reason,
+            "reason": self.reason,
             "risk_assessment": self.risk_assessment.to_dict() if self.risk_assessment else None,
             "timestamp": self.timestamp.isoformat(),
         }

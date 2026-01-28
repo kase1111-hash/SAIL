@@ -237,9 +237,23 @@ class SecureChannel:
             ssl_context = None
             if self._config.tls_enabled:
                 import ssl
+                import os
 
                 ssl_context = ssl.create_default_context()
                 if not self._config.tls_verify:
+                    # Only allow disabling TLS verification in development
+                    if os.environ.get("SAIL_ENV") != "development":
+                        logger.error(
+                            "TLS verification cannot be disabled in production. "
+                            "Set SAIL_ENV=development to disable for testing only."
+                        )
+                        raise SecurityError(
+                            "TLS verification must be enabled in production environments"
+                        )
+                    logger.warning(
+                        "TLS verification disabled - this is insecure and should "
+                        "only be used in development environments"
+                    )
                     ssl_context.check_hostname = False
                     ssl_context.verify_mode = ssl.CERT_NONE
                 elif self._config.tls_ca_cert:

@@ -132,15 +132,15 @@ ROLE_PERMISSIONS: dict[UserRole, set[Permission]] = {
     },
     UserRole.USER: {
         Permission.VIEW_SETTINGS,
-        Permission.OVERRIDE_GUARDIAN_MODE,
+        # OVERRIDE_GUARDIAN_MODE removed - should require ADMIN role
         Permission.CHANGE_INTERVENTION_MODE,
         Permission.DISMISS_ALERTS,
         Permission.VIEW_OWN_DATA,
         Permission.DELETE_OWN_DATA,
         Permission.SHARE_LOCATION,
         Permission.ACCESS_ALL_KNOWLEDGE,
-        Permission.VIEW_GUARDIAN_ALERTS,
-        Permission.CONFIGURE_DEPENDENT,
+        # VIEW_GUARDIAN_ALERTS and CONFIGURE_DEPENDENT are granted
+        # dynamically only when user is assigned as a guardian
     },
     UserRole.MINOR: {
         Permission.VIEW_SETTINGS,
@@ -198,7 +198,13 @@ class PermissionChecker:
         context_factors = self._get_context_factors(context)
 
         # Start with role-based permissions
-        role_perms = ROLE_PERMISSIONS.get(user.role, set())
+        role_perms = ROLE_PERMISSIONS.get(user.role, set()).copy()
+
+        # Grant guardian-specific permissions dynamically if user is a guardian
+        if hasattr(user, 'dependents') and user.dependents:
+            role_perms.add(Permission.VIEW_GUARDIAN_ALERTS)
+            role_perms.add(Permission.CONFIGURE_DEPENDENT)
+
         has_base_permission = permission in role_perms
 
         # Check access level grants
