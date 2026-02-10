@@ -90,7 +90,7 @@ config/local.yaml
 config/secrets.yaml
 
 # SAIL specific
-data/context/
+data/
 data/knowledge_base/*.db
 models/*.bin
 models/*.gguf
