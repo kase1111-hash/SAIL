@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from src.core.events import EventEmitter
 from src.hub.base import NodeCapability, NodeState, NodeType
 
 if TYPE_CHECKING:
@@ -140,7 +141,7 @@ class NodeConfig(BaseModel):
     tls_ca_cert_path: str | None = Field(default=None, description="CA certificate path")
 
 
-class BaseNode(ABC):
+class BaseNode(ABC, EventEmitter[NodeEvent]):
     """
     Abstract base class for satellite nodes.
 
@@ -188,8 +189,7 @@ class BaseNode(ABC):
         self._pending_responses: dict[str, asyncio.Future] = {}
         self._register_default_handlers()
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[NodeEvent], None]] = []
+        self.__init_emitter__()
 
         # Offline buffer
         self._offline_buffer: list[NodeMessage] = []
@@ -605,18 +605,9 @@ class BaseNode(ABC):
         """Register a custom message handler."""
         self._message_handlers[message_type] = handler
 
-    def on_event(self, callback: Callable[[NodeEvent], None]) -> None:
-        """Register event callback."""
-        self._event_callbacks.append(callback)
-
     def _emit_event(self, event_type: str, data: dict[str, Any] | None = None) -> None:
         """Emit event to callbacks."""
-        event = NodeEvent(event_type=event_type, data=data or {})
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(NodeEvent(event_type=event_type, data=data or {}))
 
     def get_status(self) -> dict[str, Any]:
         """Get node status."""

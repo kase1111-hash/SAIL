@@ -12,6 +12,8 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
+from src.core.events import EventEmitter
+
 from .base import (
     Intervention,
     InterventionConfig,
@@ -105,7 +107,7 @@ class InterventionQueue:
 # ============================================================================
 
 
-class InterventionEngine:
+class InterventionEngine(EventEmitter[InterventionEvent]):
     """
     Main intervention engine that orchestrates all modes.
 
@@ -151,8 +153,7 @@ class InterventionEngine:
         self._escalation_timer: datetime | None = None
         self._deescalation_timer: datetime | None = None
 
-        # Callbacks
-        self._event_callbacks: list[Callable[[InterventionEvent], None]] = []
+        self.__init_emitter__()
         self._intervention_callbacks: list[Callable[[Intervention], None]] = []
 
         # Running state
@@ -181,10 +182,6 @@ class InterventionEngine:
     def last_assessment(self) -> RiskAssessment | None:
         """Get last risk assessment."""
         return self._last_assessment
-
-    def register_event_callback(self, callback: Callable[[InterventionEvent], None]) -> None:
-        """Register callback for intervention events."""
-        self._event_callbacks.append(callback)
 
     def register_intervention_callback(self, callback: Callable[[Intervention], None]) -> None:
         """Register callback for new interventions."""
@@ -431,13 +428,7 @@ class InterventionEngine:
 
     def _emit_event(self, event_type: InterventionEventType, data: Any) -> None:
         """Emit an intervention event."""
-        event = InterventionEvent(event_type=event_type, data=data)
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(InterventionEvent(event_type=event_type, data=data))
 
     def get_mode_duration(self) -> float:
         """Get duration in current mode (seconds)."""

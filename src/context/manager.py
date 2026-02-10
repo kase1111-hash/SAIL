@@ -11,10 +11,11 @@ import asyncio
 import logging
 import threading
 import uuid
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
+
+from src.core.events import EventEmitter
 
 from src.context.base import (
     ContextConfig,
@@ -54,7 +55,7 @@ class SessionInfo:
     is_crisis: bool = False
 
 
-class ContextBufferManager:
+class ContextBufferManager(EventEmitter[ContextManagerEvent]):
     """
     Manages the complete context buffer system.
 
@@ -101,8 +102,7 @@ class ContextBufferManager:
         self._maintenance_task: asyncio.Task | None = None
         self._maintenance_interval = 60  # seconds
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[ContextManagerEvent], None]] = []
+        self.__init_emitter__()
 
         self._lock = threading.RLock()
 
@@ -571,27 +571,9 @@ class ContextBufferManager:
 
         return stats
 
-    def on_event(self, callback: Callable[[ContextManagerEvent], None]) -> None:
-        """
-        Register callback for context events.
-
-        Args:
-            callback: Function to call on events
-        """
-        self._event_callbacks.append(callback)
-
     def _emit_event(self, event_type: str, data: dict | None = None) -> None:
         """Emit an event to all registered callbacks."""
-        event = ContextManagerEvent(
-            event_type=event_type,
-            data=data or {},
-        )
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(ContextManagerEvent(event_type=event_type, data=data or {}))
 
     @property
     def session_id(self) -> str | None:

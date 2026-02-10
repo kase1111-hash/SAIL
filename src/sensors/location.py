@@ -13,6 +13,8 @@ from datetime import datetime
 from math import atan2, cos, radians, sin, sqrt
 from typing import Any
 
+from src.core.events import EventEmitter
+
 from .base import (
     Confidence,
     Geofence,
@@ -399,7 +401,7 @@ def calculate_distance_from_home(
 # ============================================================================
 
 
-class LocationSensor(Sensor):
+class LocationSensor(Sensor, EventEmitter[SensorEvent]):
     """Location sensor with GPS, geofencing, and jurisdiction detection."""
 
     def __init__(
@@ -415,7 +417,7 @@ class LocationSensor(Sensor):
         self.geofence_manager = GeofenceManager(config.geofences if config else None)
 
         self._last_jurisdiction: Jurisdiction | None = None
-        self._event_callbacks: list[Callable[[SensorEvent], None]] = []
+        self.__init_emitter__()
 
     def add_geofence(self, geofence: Geofence) -> None:
         """Add a geofence."""
@@ -425,9 +427,9 @@ class LocationSensor(Sensor):
         """Remove a geofence."""
         self.geofence_manager.remove_geofence(geofence_id)
 
-    def register_event_callback(self, callback: Callable[[SensorEvent], None]) -> None:
+    def register_event_callback(self, callback):
         """Register callback for sensor events."""
-        self._event_callbacks.append(callback)
+        super().register_event_callback(callback)
         self.geofence_manager.register_callback(callback)
 
     async def initialize(self) -> bool:
@@ -537,11 +539,7 @@ class LocationSensor(Sensor):
 
     def _notify_event(self, event: SensorEvent) -> None:
         """Notify event callbacks."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
     async def start(self) -> None:
         """Start continuous location monitoring."""

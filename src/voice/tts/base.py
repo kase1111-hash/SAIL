@@ -1,13 +1,11 @@
 """
 SAIL Text-to-Speech Base Module
 
-Provides abstract base class for text-to-speech implementations.
+Provides shared types for text-to-speech implementations.
 """
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -139,139 +137,6 @@ class TTSConfig:
     # Behavior settings
     sentence_pause_ms: int = 300    # Pause between sentences
     paragraph_pause_ms: int = 500   # Pause between paragraphs
-
-
-class TTSProvider(ABC):
-    """
-    Abstract base class for text-to-speech providers.
-
-    Implementations should synthesize text to speech audio using
-    various TTS engines.
-    """
-
-    def __init__(self, config: TTSConfig | None = None) -> None:
-        """
-        Initialize TTS provider.
-
-        Args:
-            config: TTS configuration, uses defaults if None
-        """
-        self.config = config or TTSConfig()
-        self._state = SpeechState.IDLE
-        self._is_loaded = False
-        self._current_voice: VoiceProfile | None = None
-
-    @abstractmethod
-    async def load_model(self, voice: str | None = None) -> None:
-        """
-        Load the TTS model.
-
-        Args:
-            voice: Voice model to load, uses config default if None
-        """
-        pass
-
-    @abstractmethod
-    async def unload_model(self) -> None:
-        """Unload the model to free resources."""
-        pass
-
-    @abstractmethod
-    async def synthesize(self, text: str) -> SpeechResult:
-        """
-        Synthesize text to audio.
-
-        Args:
-            text: Text to synthesize
-
-        Returns:
-            SpeechResult with audio data
-        """
-        pass
-
-    @abstractmethod
-    async def synthesize_stream(
-        self,
-        text: str,
-    ) -> AsyncIterator[np.ndarray]:
-        """
-        Synthesize text to audio with streaming output.
-
-        Args:
-            text: Text to synthesize
-
-        Yields:
-            Audio chunks as numpy arrays
-        """
-        pass
-
-    @abstractmethod
-    async def list_voices(self) -> list[VoiceProfile]:
-        """
-        List available voices.
-
-        Returns:
-            List of VoiceProfile objects
-        """
-        pass
-
-    @abstractmethod
-    async def get_voice_info(self, voice_id: str) -> VoiceProfile | None:
-        """
-        Get information about a specific voice.
-
-        Args:
-            voice_id: Voice identifier
-
-        Returns:
-            VoiceProfile or None if not found
-        """
-        pass
-
-    def get_rate_for_mode(self, mode: SpeechMode) -> float:
-        """
-        Get the speaking rate for a specific mode.
-
-        Args:
-            mode: Speech mode
-
-        Returns:
-            Rate multiplier
-        """
-        base_rate = self.config.rate
-
-        if mode == SpeechMode.CALM:
-            return base_rate * self.config.calm_rate_multiplier
-        elif mode == SpeechMode.URGENT:
-            return base_rate * self.config.urgent_rate_multiplier
-        elif mode == SpeechMode.CRISIS:
-            return base_rate * self.config.crisis_rate_multiplier
-        else:
-            return base_rate
-
-    @property
-    def state(self) -> SpeechState:
-        """Get current synthesis state."""
-        return self._state
-
-    @property
-    def is_loaded(self) -> bool:
-        """Check if model is loaded."""
-        return self._is_loaded
-
-    @property
-    def current_voice(self) -> VoiceProfile | None:
-        """Get current voice profile."""
-        return self._current_voice
-
-    async def __aenter__(self) -> TTSProvider:
-        """Async context manager entry."""
-        await self.load_model()
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
-        await self.unload_model()
 
 
 def preprocess_text_for_speech(text: str) -> str:

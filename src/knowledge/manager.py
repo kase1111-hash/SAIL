@@ -11,10 +11,11 @@ Orchestrates the complete knowledge domain system including:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+from src.core.events import EventEmitter
 
 from src.knowledge.base import (
     Jurisdiction,
@@ -65,7 +66,7 @@ class KnowledgeEventType:
 # ============================================================================
 
 
-class KnowledgeManager:
+class KnowledgeManager(EventEmitter[KnowledgeEvent]):
     """
     Central manager for the knowledge domain system.
 
@@ -93,8 +94,7 @@ class KnowledgeManager:
         self._initialized = False
         self._running = False
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[KnowledgeEvent], None]] = []
+        self.__init_emitter__()
 
         # Statistics
         self._query_count = 0
@@ -431,13 +431,6 @@ class KnowledgeManager:
             city=city,
         )
 
-    def register_event_callback(
-        self,
-        callback: Callable[[KnowledgeEvent], None],
-    ) -> None:
-        """Register callback for knowledge events."""
-        self._event_callbacks.append(callback)
-
     def _emit_event(
         self,
         event_type: str,
@@ -445,17 +438,7 @@ class KnowledgeManager:
         data: dict[str, Any] | None = None,
     ) -> None:
         """Emit a knowledge event."""
-        event = KnowledgeEvent(
-            event_type=event_type,
-            domain=domain,
-            data=data or {},
-        )
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(KnowledgeEvent(event_type=event_type, domain=domain, data=data or {}))
 
     def get_stats(self) -> dict[str, Any]:
         """Get knowledge manager statistics."""

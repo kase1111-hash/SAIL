@@ -11,22 +11,18 @@ Provides financial safety knowledge including:
 
 from __future__ import annotations
 
-import json
 import logging
-import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from src.knowledge.base import (
     JurisdictionLevel,
     KnowledgeCategory,
-    KnowledgeDomain,
     KnowledgeDomainType,
     KnowledgeItem,
-    KnowledgeQuery,
     KnowledgeRelevance,
-    KnowledgeResult,
 )
+from src.knowledge.domains.base_domain import BaseKnowledgeDomain
 
 logger = logging.getLogger(__name__)
 
@@ -623,128 +619,21 @@ def analyze_scam_risk(text: str) -> tuple[float, list[str]]:
 # ============================================================================
 
 
-class FinancialKnowledgeDomain(KnowledgeDomain):
-    """
-    Financial protection knowledge domain.
-    """
+class FinancialKnowledgeDomain(BaseKnowledgeDomain):
+    """Financial protection knowledge domain."""
 
     def __init__(self, data_path: Path | None = None):
         super().__init__(KnowledgeDomainType.FINANCIAL, data_path)
 
-    async def load(self) -> bool:
-        """Load all financial knowledge items."""
-        try:
-            # Load scam patterns
-            for item in SCAM_PATTERNS.values():
-                self.add_item(item)
-
-            # Load phishing patterns
-            for item in PHISHING_PATTERNS.values():
-                self.add_item(item)
-
-            # Load wire fraud knowledge
-            for item in WIRE_FRAUD.values():
-                self.add_item(item)
-
-            # Load social engineering
-            for item in SOCIAL_ENGINEERING.values():
-                self.add_item(item)
-
-            # Try to load additional items from data files
-            await self._load_from_files()
-
-            self._loaded = True
-            logger.info(f"Loaded {self.item_count} financial knowledge items")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to load financial knowledge: {e}")
-            return False
-
-    async def _load_from_files(self) -> None:
-        """Load additional knowledge from JSON files."""
-        if not self.data_path.exists():
-            return
-
-        for json_file in self.data_path.glob("*.json"):
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-
-                if isinstance(data, list):
-                    for item_data in data:
-                        item = KnowledgeItem.from_dict(item_data)
-                        self.add_item(item)
-
-            except Exception as e:
-                logger.warning(f"Failed to load {json_file}: {e}")
-
-    async def query(self, query: KnowledgeQuery) -> KnowledgeResult:
-        """Query the financial knowledge domain."""
-        start_time = time.time()
-
-        candidates = list(self._items.values())
-        if query.category:
-            candidates = [item for item in candidates if item.category == query.category]
-
-        query_words = query.query_text.lower().split()
-        scored_items: list[tuple[KnowledgeItem, float]] = []
-
-        for item in candidates:
-            score = self._calculate_relevance_score(item, query_words, query)
-            if score > 0:
-                scored_items.append((item, score))
-
-        scored_items.sort(key=lambda x: x[1], reverse=True)
-
-        top_items = scored_items[:query.max_results]
-        items = [item for item, _ in top_items]
-        scores = [score for _, score in top_items]
-
-        result = KnowledgeResult(
-            query_id=query.query_id,
-            items=items,
-            scores=scores,
-            total_found=len(scored_items),
-            domain_searched=self.domain_type,
-            jurisdiction_filtered=False,
-            retrieval_time_ms=(time.time() - start_time) * 1000,
-            sources=[item.source for item in items if item.source],
-        )
-
-        return result
-
-    def _calculate_relevance_score(
-        self,
-        item: KnowledgeItem,
-        query_words: list[str],
-        query: KnowledgeQuery,
-    ) -> float:
-        """Calculate relevance score for an item."""
-        score = 0.0
-        item_text = f"{item.title} {item.content} {item.summary} {' '.join(item.keywords)}".lower()
-
-        for word in query_words:
-            if word in item_text:
-                score += 1.0
-            if word in [k.lower() for k in item.keywords]:
-                score += 2.0
-
-        title_lower = item.title.lower()
-        for word in query_words:
-            if word in title_lower:
-                score += 1.5
-
-        relevance_boosts = {
-            KnowledgeRelevance.CRITICAL: 3.0,
-            KnowledgeRelevance.HIGH: 2.0,
-            KnowledgeRelevance.MEDIUM: 1.0,
-            KnowledgeRelevance.LOW: 0.5,
-            KnowledgeRelevance.INFORMATIONAL: 0.25,
-        }
-        score *= relevance_boosts.get(item.relevance, 1.0)
-
-        return score
+    def _load_items(self) -> None:
+        for item in SCAM_PATTERNS.values():
+            self.add_item(item)
+        for item in PHISHING_PATTERNS.values():
+            self.add_item(item)
+        for item in WIRE_FRAUD.values():
+            self.add_item(item)
+        for item in SOCIAL_ENGINEERING.values():
+            self.add_item(item)
 
     def analyze_for_scams(self, text: str) -> tuple[float, list[str], list[KnowledgeItem]]:
         """

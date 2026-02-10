@@ -15,9 +15,10 @@ import asyncio
 import json
 import logging
 from collections import deque
-from collections.abc import Callable
 from datetime import datetime
 from typing import Any
+
+from src.core.events import EventEmitter
 
 import numpy as np
 
@@ -55,7 +56,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-class UserManager:
+class UserManager(EventEmitter[UserEvent]):
     """
     Central manager for the multi-user family system.
 
@@ -88,8 +89,7 @@ class UserManager:
         self._initialized = False
         self._running = False
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[UserEvent], None]] = []
+        self.__init_emitter__()
 
         # Default user for anonymous/unidentified access
         self._default_user: User | None = None
@@ -651,21 +651,13 @@ class UserManager:
     # Events
     # ========================================================================
 
-    def register_event_callback(self, callback: Callable[[UserEvent], None]) -> None:
-        """Register callback for user events."""
-        self._event_callbacks.append(callback)
-
     def _on_user_event(self, event: UserEvent) -> None:
         """Handle events from subsystems."""
-        self._emit_event(event)
+        self._emit(event)
 
     def _emit_event(self, event: UserEvent) -> None:
         """Emit a user event."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
     # ========================================================================
     # Statistics

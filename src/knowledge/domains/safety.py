@@ -11,21 +11,17 @@ Provides personal safety knowledge including:
 
 from __future__ import annotations
 
-import json
 import logging
-import time
 from pathlib import Path
 
 from src.knowledge.base import (
     JurisdictionLevel,
     KnowledgeCategory,
-    KnowledgeDomain,
     KnowledgeDomainType,
     KnowledgeItem,
-    KnowledgeQuery,
     KnowledgeRelevance,
-    KnowledgeResult,
 )
+from src.knowledge.domains.base_domain import BaseKnowledgeDomain
 
 logger = logging.getLogger(__name__)
 
@@ -550,148 +546,30 @@ IF YOUR INFORMATION IS EXPOSED:
 # ============================================================================
 
 
-class SafetyKnowledgeDomain(KnowledgeDomain):
-    """
-    Safety knowledge domain providing personal safety guidance.
-    """
+class SafetyKnowledgeDomain(BaseKnowledgeDomain):
+    """Safety knowledge domain providing personal safety guidance."""
 
     def __init__(self, data_path: Path | None = None):
         super().__init__(KnowledgeDomainType.SAFETY, data_path)
 
-    async def load(self) -> bool:
-        """Load all safety knowledge items."""
-        try:
-            # Load de-escalation techniques
-            for item in DE_ESCALATION_TECHNIQUES.values():
-                self.add_item(item)
+    def _load_items(self) -> None:
+        for item in DE_ESCALATION_TECHNIQUES.values():
+            self.add_item(item)
+        for item in SITUATIONAL_AWARENESS.values():
+            self.add_item(item)
+        for item in SAFE_MEETING.values():
+            self.add_item(item)
+        for item in ONLINE_SAFETY.values():
+            self.add_item(item)
 
-            # Load situational awareness
-            for item in SITUATIONAL_AWARENESS.values():
-                self.add_item(item)
-
-            # Load safe meeting protocols
-            for item in SAFE_MEETING.values():
-                self.add_item(item)
-
-            # Load online safety
-            for item in ONLINE_SAFETY.values():
-                self.add_item(item)
-
-            # Try to load additional items from data files
-            await self._load_from_files()
-
-            self._loaded = True
-            logger.info(f"Loaded {self.item_count} safety knowledge items")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to load safety knowledge: {e}")
-            return False
-
-    async def _load_from_files(self) -> None:
-        """Load additional knowledge from JSON files."""
-        if not self.data_path.exists():
-            return
-
-        for json_file in self.data_path.glob("*.json"):
-            try:
-                with open(json_file) as f:
-                    data = json.load(f)
-
-                if isinstance(data, list):
-                    for item_data in data:
-                        item = KnowledgeItem.from_dict(item_data)
-                        self.add_item(item)
-                elif isinstance(data, dict):
-                    item = KnowledgeItem.from_dict(data)
-                    self.add_item(item)
-
-            except Exception as e:
-                logger.warning(f"Failed to load {json_file}: {e}")
-
-    async def query(self, query: KnowledgeQuery) -> KnowledgeResult:
-        """Query the safety knowledge domain."""
-        start_time = time.time()
-
-        # Filter by category if specified
-        candidates = list(self._items.values())
-        if query.category:
-            candidates = [item for item in candidates if item.category == query.category]
-
-        # Score by relevance
-        query_words = query.query_text.lower().split()
-        scored_items: list[tuple[KnowledgeItem, float]] = []
-
-        for item in candidates:
-            score = self._calculate_relevance_score(item, query_words, query)
-            if score > 0:
-                scored_items.append((item, score))
-
-        # Sort by score
-        scored_items.sort(key=lambda x: x[1], reverse=True)
-
-        # Take top results
-        top_items = scored_items[:query.max_results]
-        items = [item for item, _ in top_items]
-        scores = [score for _, score in top_items]
-
-        result = KnowledgeResult(
-            query_id=query.query_id,
-            items=items,
-            scores=scores,
-            total_found=len(scored_items),
-            domain_searched=self.domain_type,
-            jurisdiction_filtered=False,
-            retrieval_time_ms=(time.time() - start_time) * 1000,
-            sources=[item.source for item in items if item.source],
-        )
-
-        return result
-
-    def _calculate_relevance_score(
-        self,
-        item: KnowledgeItem,
-        query_words: list[str],
-        query: KnowledgeQuery,
-    ) -> float:
-        """Calculate relevance score for an item."""
-        score = 0.0
-        item_text = f"{item.title} {item.content} {item.summary} {' '.join(item.keywords)}".lower()
-
-        # Keyword matching
-        for word in query_words:
-            if word in item_text:
-                score += 1.0
-            if word in [k.lower() for k in item.keywords]:
-                score += 2.0
-
-        # Title match boost
-        title_lower = item.title.lower()
-        for word in query_words:
-            if word in title_lower:
-                score += 1.5
-
-        # Relevance level boost
-        relevance_boosts = {
-            KnowledgeRelevance.CRITICAL: 3.0,
-            KnowledgeRelevance.HIGH: 2.0,
-            KnowledgeRelevance.MEDIUM: 1.0,
-            KnowledgeRelevance.LOW: 0.5,
-            KnowledgeRelevance.INFORMATIONAL: 0.25,
-        }
-        score *= relevance_boosts.get(item.relevance, 1.0)
-
-        # Context-based boosting
+    def _apply_domain_boost(self, item, query_words, query, score):
         context = query.context
         if context:
-            # Boost de-escalation if stress detected
             if context.get("stress_level") == "high" and item.category == KnowledgeCategory.DE_ESCALATION:
                 score *= 1.5
-
-            # Boost late night safety if it's late
+            item_text = f"{item.title} {item.content}".lower()
             if (context.get("is_late_night") and "late" in item_text) or "night" in item_text:
                 score *= 1.3
-
         return score
 
     def get_de_escalation_guidance(self) -> list[KnowledgeItem]:

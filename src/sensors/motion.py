@@ -8,11 +8,12 @@ speed calculation, and accident detection.
 import asyncio
 import logging
 from collections import deque
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import sqrt
 from typing import Any
+
+from src.core.events import EventEmitter
 
 from .base import (
     Confidence,
@@ -369,7 +370,7 @@ class AccidentDetector:
 # ============================================================================
 
 
-class MotionSensor(Sensor):
+class MotionSensor(Sensor, EventEmitter[SensorEvent]):
     """Motion sensor with state classification and accident detection."""
 
     def __init__(
@@ -387,17 +388,13 @@ class MotionSensor(Sensor):
         self._current_state = MotionState.UNKNOWN
         self._state_start_time: datetime | None = None
         self._last_speed: float | None = None
-        self._event_callbacks: list[Callable[[SensorEvent], None]] = []
+        self.__init_emitter__()
 
     def set_speed(self, speed_mps: float) -> None:
         """Set current speed from external source (e.g., GPS)."""
         self._last_speed = speed_mps
         self.classifier.add_speed_reading(speed_mps)
         self.accident_detector.add_reading(speed_mps=speed_mps)
-
-    def register_event_callback(self, callback: Callable[[SensorEvent], None]) -> None:
-        """Register callback for motion events."""
-        self._event_callbacks.append(callback)
 
     async def initialize(self) -> bool:
         """Initialize the motion sensor."""
@@ -488,11 +485,7 @@ class MotionSensor(Sensor):
 
     def _notify_event(self, event: SensorEvent) -> None:
         """Notify event callbacks."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
     async def start(self) -> None:
         """Start continuous motion monitoring."""
