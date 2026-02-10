@@ -136,6 +136,8 @@ async def _run_text_mode(config) -> None:
                 console.print(f"\n[cyan]SAIL:[/cyan] {result.response}")
                 if result.citations:
                     console.print(f"[dim]Sources: {', '.join(result.citations)}[/dim]")
+                if result.intervention_mode != "ambient":
+                    console.print(f"[dim]Mode: {result.intervention_mode}[/dim]")
                 console.print()
             except Exception as e:
                 console.print(f"\n[red]Error:[/red] {e}\n")
