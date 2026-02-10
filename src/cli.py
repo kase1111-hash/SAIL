@@ -4,6 +4,8 @@ SAIL Command Line Interface
 Entry point for the SAIL application.
 """
 
+import asyncio
+import logging
 import sys
 from pathlib import Path
 
@@ -56,10 +58,28 @@ def cli(ctx: click.Context, config: str | None) -> None:
 
 
 @cli.command()
+@click.option(
+    "--text-mode",
+    is_flag=True,
+    default=False,
+    help="Use text I/O instead of voice (no audio hardware needed)",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    default=False,
+    help="Enable verbose logging",
+)
 @click.pass_context
-def run(ctx: click.Context) -> None:
+def run(ctx: click.Context, text_mode: bool, verbose: bool) -> None:
     """Start the SAIL assistant."""
     print_banner()
+
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG, format="%(name)s %(levelname)s: %(message)s")
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     config_path = ctx.obj.get("config_path")
 
@@ -73,21 +93,115 @@ def run(ctx: click.Context) -> None:
         console.print(f"[green]LLM Provider:[/green] {config.llm.provider}")
         console.print(f"[green]Model:[/green] {config.llm.model}")
         console.print()
-        console.print("[yellow]SAIL is starting...[/yellow]")
-        console.print("[dim]Note: Core functionality not yet implemented.[/dim]")
-        console.print()
-        console.print("Press Ctrl+C to exit.")
 
-        # Placeholder for main loop
-        try:
-            while True:
-                pass
-        except KeyboardInterrupt:
-            console.print("\n[yellow]SAIL shutting down...[/yellow]")
+        if text_mode:
+            asyncio.run(_run_text_mode(config))
+        else:
+            asyncio.run(_run_voice_mode(config))
 
     except ConfigurationError as e:
         console.print(f"[red]Configuration Error:[/red] {e}")
         sys.exit(1)
+
+
+async def _run_text_mode(config) -> None:
+    """Run SAIL in interactive text mode."""
+    from .pipeline import Pipeline
+
+    console.print("[yellow]Starting SAIL in text mode...[/yellow]")
+
+    pipeline = Pipeline(config)
+
+    try:
+        await pipeline.start()
+    except Exception as e:
+        console.print(f"[red]Failed to start pipeline:[/red] {e}")
+        console.print("[dim]Is Ollama running? Try: ollama serve[/dim]")
+        return
+
+    console.print("[green]SAIL ready.[/green] Type your question (Ctrl+C to exit).\n")
+
+    try:
+        while True:
+            try:
+                user_input = input("You: ").strip()
+            except EOFError:
+                break
+
+            if not user_input:
+                continue
+
+            try:
+                result = await pipeline.query(user_input)
+                console.print(f"\n[cyan]SAIL:[/cyan] {result.response}")
+                if result.citations:
+                    console.print(f"[dim]Sources: {', '.join(result.citations)}[/dim]")
+                if result.intervention_mode != "ambient":
+                    console.print(f"[dim]Mode: {result.intervention_mode}[/dim]")
+                console.print()
+            except Exception as e:
+                console.print(f"\n[red]Error:[/red] {e}\n")
+
+    except KeyboardInterrupt:
+        console.print()
+
+    await pipeline.stop()
+    console.print("[yellow]SAIL shut down.[/yellow]")
+
+
+async def _run_voice_mode(config) -> None:
+    """Run SAIL with full voice I/O pipeline."""
+    from .pipeline import Pipeline
+
+    console.print("[yellow]Starting SAIL in voice mode...[/yellow]")
+
+    pipeline = Pipeline(config)
+
+    try:
+        await pipeline.start()
+    except Exception as e:
+        console.print(f"[red]Failed to start pipeline:[/red] {e}")
+        console.print("[dim]Is Ollama running? Try: ollama serve[/dim]")
+        return
+
+    # Import voice components
+    try:
+        from .voice.manager import VoiceInputManager, create_voice_input_manager
+        from .voice.tts.manager import VoiceOutputManager, create_voice_output_manager
+
+        voice_in = await create_voice_input_manager(config.voice)
+        voice_out = await create_voice_output_manager(config.voice)
+    except Exception as e:
+        console.print(f"[red]Voice initialization failed:[/red] {e}")
+        console.print("[dim]Try --text-mode if audio hardware is unavailable.[/dim]")
+        await pipeline.stop()
+        return
+
+    console.print("[green]SAIL listening.[/green] Say 'hey sail' to activate. Ctrl+C to exit.\n")
+
+    try:
+        await voice_out.start()
+        async for utterance in voice_in.run():
+            if utterance.was_stopped or not utterance.has_text:
+                if utterance.was_stopped:
+                    voice_out.interrupt()
+                continue
+
+            console.print(f"[dim]Heard:[/dim] {utterance.text}")
+
+            try:
+                result = await pipeline.query(utterance.text)
+                console.print(f"[cyan]SAIL:[/cyan] {result.response}\n")
+                await voice_out.speak(result.response, wait=True)
+            except Exception as e:
+                console.print(f"[red]Error:[/red] {e}\n")
+
+    except KeyboardInterrupt:
+        console.print()
+
+    await voice_out.stop()
+    await pipeline.stop()
+    console.print("[yellow]SAIL shut down.[/yellow]")
 
 
 @cli.command()
