@@ -17,9 +17,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+try:
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    _HAS_CRYPTOGRAPHY = True
+except BaseException:
+    _HAS_CRYPTOGRAPHY = False
+    Fernet = None  # type: ignore[assignment,misc]
+    hashes = None  # type: ignore[assignment]
+    PBKDF2HMAC = None  # type: ignore[assignment,misc]
 
 from src.users.base import UserManagerConfig
 
