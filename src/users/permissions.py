@@ -8,11 +8,11 @@ for the multi-user family system.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from src.core.events import EventEmitter
 from src.users.base import (
     AccessLevel,
     User,
@@ -169,13 +169,13 @@ ACCESS_LEVEL_GRANTS: dict[AccessLevel, set[Permission]] = {
 # ============================================================================
 
 
-class PermissionChecker:
+class PermissionChecker(EventEmitter[UserEvent]):
     """
     Checks permissions for users based on role, restrictions, and context.
     """
 
     def __init__(self):
-        self._event_callbacks: list[Callable[[UserEvent], None]] = []
+        self.__init_emitter__()
 
     def check_permission(
         self,
@@ -392,17 +392,9 @@ class PermissionChecker:
         perms.update(ACCESS_LEVEL_GRANTS.get(user.access_level, set()))
         return perms
 
-    def register_event_callback(self, callback: Callable[[UserEvent], None]) -> None:
-        """Register callback for permission events."""
-        self._event_callbacks.append(callback)
-
     def _emit_event(self, event: UserEvent) -> None:
         """Emit a user event."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
 
 # ============================================================================

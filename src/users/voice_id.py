@@ -11,10 +11,11 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+
+from src.core.events import EventEmitter
 
 import numpy as np
 
@@ -256,7 +257,7 @@ class VoiceIdentificationResult:
 # ============================================================================
 
 
-class VoiceIdentificationSystem:
+class VoiceIdentificationSystem(EventEmitter[UserEvent]):
     """
     System for identifying users by their voice.
 
@@ -280,8 +281,7 @@ class VoiceIdentificationSystem:
         # State
         self._initialized = False
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[UserEvent], None]] = []
+        self.__init_emitter__()
 
         # Statistics
         self._identification_count = 0
@@ -539,17 +539,9 @@ class VoiceIdentificationSystem:
 
         return True
 
-    def register_event_callback(self, callback: Callable[[UserEvent], None]) -> None:
-        """Register callback for voice ID events."""
-        self._event_callbacks.append(callback)
-
     def _emit_event(self, event: UserEvent) -> None:
         """Emit a user event."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
     def get_stats(self) -> dict[str, Any]:
         """Get voice identification statistics."""

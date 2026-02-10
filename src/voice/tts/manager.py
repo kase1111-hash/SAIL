@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
+
+from src.core.events import EventEmitter
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -18,11 +20,10 @@ from src.voice.tts.base import (
     SpeechMode,
     SpeechPriority,
     SpeechRequest,
-    TTSProvider,
     VoiceProfile,
 )
 from src.voice.tts.output import AudioOutputManager, QueuedAudio
-from src.voice.tts.piper import PiperConfig, create_tts_provider
+from src.voice.tts.piper import PiperConfig, PiperProvider, create_tts_provider
 
 if TYPE_CHECKING:
     from src.config.schema import VoiceConfig
@@ -62,7 +63,7 @@ class SpeakResult:
     duration_seconds: float = 0.0
 
 
-class VoiceOutputManager:
+class VoiceOutputManager(EventEmitter[VoiceOutputEvent]):
     """
     Manages the complete voice output pipeline.
 
@@ -74,7 +75,7 @@ class VoiceOutputManager:
     def __init__(
         self,
         voice_config: VoiceConfig | None = None,
-        tts_provider: TTSProvider | None = None,
+        tts_provider: PiperProvider | None = None,
     ) -> None:
         """
         Initialize voice output manager.
@@ -95,8 +96,7 @@ class VoiceOutputManager:
         self._stop_requested = False
         self._current_mode = SpeechMode.NORMAL
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[VoiceOutputEvent], None]] = []
+        self.__init_emitter__()
         self._on_speak_start_callbacks: list[Callable[[SpeechRequest], None]] = []
         self._on_speak_complete_callbacks: list[Callable[[SpeechRequest], None]] = []
         self._on_interrupt_callbacks: list[Callable[[], None]] = []
@@ -415,15 +415,6 @@ class VoiceOutputManager:
         """Callback when audio playback is interrupted."""
         self._state = VoiceOutputState.INTERRUPTED
 
-    def on_event(self, callback: Callable[[VoiceOutputEvent], None]) -> None:
-        """
-        Register callback for all events.
-
-        Args:
-            callback: Function to call on events
-        """
-        self._event_callbacks.append(callback)
-
     def on_speak_start(self, callback: Callable[[SpeechRequest], None]) -> None:
         """
         Register callback for when speech starts.
@@ -455,17 +446,11 @@ class VoiceOutputManager:
         """Emit an event to all registered callbacks."""
         import time
 
-        event = VoiceOutputEvent(
+        self._emit(VoiceOutputEvent(
             event_type=event_type,
             data=data or {},
             timestamp=time.time(),
-        )
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        ))
 
     @property
     def state(self) -> VoiceOutputState:

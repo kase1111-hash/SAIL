@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
+
+from src.core.events import EventEmitter
 
 from src.users.base import (
     User,
@@ -322,7 +323,7 @@ ALERT_TEMPLATES: dict[GuardianAlertType, dict[str, Any]] = {
 # ============================================================================
 
 
-class GuardianAlertSystem:
+class GuardianAlertSystem(EventEmitter[UserEvent]):
     """
     System for managing guardian alerts and notifications.
     """
@@ -344,8 +345,7 @@ class GuardianAlertSystem:
         # Notification handlers
         self._notification_handlers: dict[NotificationChannel, Callable] = {}
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[UserEvent], None]] = []
+        self.__init_emitter__()
 
         # Statistics
         self._alerts_created = 0
@@ -584,17 +584,9 @@ class GuardianAlertSystem:
 
         return alerts[:limit]
 
-    def register_event_callback(self, callback: Callable[[UserEvent], None]) -> None:
-        """Register callback for guardian alert events."""
-        self._event_callbacks.append(callback)
-
     def _emit_event(self, event: UserEvent) -> None:
         """Emit a user event."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
     def get_stats(self) -> dict[str, Any]:
         """Get guardian alert statistics."""

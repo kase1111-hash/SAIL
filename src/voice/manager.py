@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable
+
+from src.core.events import EventEmitter
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -72,7 +74,7 @@ class VoiceInputResult:
         return self.command is not None and self.command.detected
 
 
-class VoiceInputManager:
+class VoiceInputManager(EventEmitter[VoiceInputEvent]):
     """
     Manages the complete voice input pipeline.
 
@@ -108,8 +110,7 @@ class VoiceInputManager:
         self._command_detector = command_detector or CommandDetector()
         self._quick_stop_detector = QuickStopDetector()
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[VoiceInputEvent], None]] = []
+        self.__init_emitter__()
         self._on_utterance_callbacks: list[Callable[[VoiceInputResult], None]] = []
         self._on_stop_callbacks: list[Callable[[], None]] = []
 
@@ -416,15 +417,6 @@ class VoiceInputManager:
         if self._is_running:
             self._state = VoiceInputState.LISTENING_FOR_SPEECH
 
-    def on_event(self, callback: Callable[[VoiceInputEvent], None]) -> None:
-        """
-        Register a callback for all events.
-
-        Args:
-            callback: Function to call on events
-        """
-        self._event_callbacks.append(callback)
-
     def on_utterance(self, callback: Callable[[VoiceInputResult], None]) -> None:
         """
         Register a callback for completed utterances.
@@ -445,17 +437,11 @@ class VoiceInputManager:
 
     def _emit_event(self, event_type: str, data: dict | None = None) -> None:
         """Emit an event to all registered callbacks."""
-        event = VoiceInputEvent(
+        self._emit(VoiceInputEvent(
             event_type=event_type,
             data=data or {},
             timestamp=asyncio.get_event_loop().time(),
-        )
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        ))
 
     @property
     def state(self) -> VoiceInputState:

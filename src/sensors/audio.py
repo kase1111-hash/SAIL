@@ -8,11 +8,12 @@ and threat cue identification for audio-based situational awareness.
 import asyncio
 import logging
 from collections import deque
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from math import log10
 from typing import Any
+
+from src.core.events import EventEmitter
 
 import numpy as np
 
@@ -470,7 +471,7 @@ class SystemAudioProvider(AudioProvider):
 # ============================================================================
 
 
-class AudioSensor(Sensor):
+class AudioSensor(Sensor, EventEmitter[SensorEvent]):
     """Audio sensor for environment classification and stress detection."""
 
     def __init__(
@@ -489,11 +490,7 @@ class AudioSensor(Sensor):
 
         self._sample_duration = config.audio_sample_duration_seconds if config else 2.0
         self._stress_detection_enabled = config.stress_detection_enabled if config else True
-        self._event_callbacks: list[Callable[[SensorEvent], None]] = []
-
-    def register_event_callback(self, callback: Callable[[SensorEvent], None]) -> None:
-        """Register callback for audio events."""
-        self._event_callbacks.append(callback)
+        self.__init_emitter__()
 
     async def initialize(self) -> bool:
         """Initialize the audio sensor."""
@@ -594,11 +591,7 @@ class AudioSensor(Sensor):
 
     def _notify_event(self, event: SensorEvent) -> None:
         """Notify event callbacks."""
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(event)
 
     async def start(self) -> None:
         """Start continuous audio monitoring."""

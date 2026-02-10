@@ -26,6 +26,8 @@ from src.hub.base import (
     generate_node_id,
 )
 
+from src.core.events import EventEmitter
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -84,7 +86,7 @@ class Response:
     timestamp: datetime = field(default_factory=datetime.now)
 
 
-class HubCoordinator:
+class HubCoordinator(EventEmitter[HubEvent]):
     """
     Central hub coordinator for the distributed SAIL system.
 
@@ -127,8 +129,7 @@ class HubCoordinator:
         self._sync_task: asyncio.Task | None = None
         self._cleanup_task: asyncio.Task | None = None
 
-        # Event callbacks
-        self._event_callbacks: list[Callable[[HubEvent], None]] = []
+        self.__init_emitter__()
 
         # Request handlers
         self._request_handlers: dict[str, Callable] = {}
@@ -718,10 +719,6 @@ class HubCoordinator:
         """Register a custom request handler."""
         self._request_handlers[request_type] = handler
 
-    def on_event(self, callback: Callable[[HubEvent], None]) -> None:
-        """Register event callback."""
-        self._event_callbacks.append(callback)
-
     def _emit_event(
         self,
         event_type: str,
@@ -729,17 +726,7 @@ class HubCoordinator:
         data: dict[str, Any] | None = None,
     ) -> None:
         """Emit an event to callbacks."""
-        event = HubEvent(
-            event_type=event_type,
-            node_id=node_id,
-            data=data or {},
-        )
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        self._emit(HubEvent(event_type=event_type, node_id=node_id, data=data or {}))
 
     @property
     def state(self) -> HubState:

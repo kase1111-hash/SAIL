@@ -19,11 +19,11 @@ from pathlib import Path
 import numpy as np
 
 from src.voice.tts.base import (
+    SpeechMode,
     SpeechResult,
     SpeechState,
     TTSConfig,
     TTSEngine,
-    TTSProvider,
     VoiceProfile,
     preprocess_text_for_speech,
     split_text_into_sentences,
@@ -54,7 +54,7 @@ class PiperConfig(TTSConfig):
         self.engine = TTSEngine.PIPER
 
 
-class PiperProvider(TTSProvider):
+class PiperProvider:
     """
     Text-to-speech provider using Piper TTS.
 
@@ -104,8 +104,10 @@ class PiperProvider(TTSProvider):
         Args:
             config: Piper configuration, uses defaults if None
         """
-        super().__init__(config or PiperConfig())
-        self.config: PiperConfig = self.config  # Type narrowing
+        self.config: PiperConfig = config or PiperConfig()
+        self._state = SpeechState.IDLE
+        self._is_loaded = False
+        self._current_voice: VoiceProfile | None = None
 
         self._piper = None
         self._synthesize_fn = None
@@ -422,8 +424,53 @@ class PiperProvider(TTSProvider):
 
         return None
 
+    def get_rate_for_mode(self, mode: SpeechMode) -> float:
+        """
+        Get the speaking rate for a specific mode.
 
-def create_tts_provider(config: TTSConfig | None = None) -> TTSProvider:
+        Args:
+            mode: Speech mode
+
+        Returns:
+            Rate multiplier
+        """
+        base_rate = self.config.rate
+
+        if mode == SpeechMode.CALM:
+            return base_rate * self.config.calm_rate_multiplier
+        elif mode == SpeechMode.URGENT:
+            return base_rate * self.config.urgent_rate_multiplier
+        elif mode == SpeechMode.CRISIS:
+            return base_rate * self.config.crisis_rate_multiplier
+        else:
+            return base_rate
+
+    @property
+    def state(self) -> SpeechState:
+        """Get current synthesis state."""
+        return self._state
+
+    @property
+    def is_loaded(self) -> bool:
+        """Check if model is loaded."""
+        return self._is_loaded
+
+    @property
+    def current_voice(self) -> VoiceProfile | None:
+        """Get current voice profile."""
+        return self._current_voice
+
+    async def __aenter__(self) -> PiperProvider:
+        """Async context manager entry."""
+        await self.load_model()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Async context manager exit."""
+        await self.unload_model()
+
+
+def create_tts_provider(config: TTSConfig | None = None) -> PiperProvider:
     """
     Factory function to create the appropriate TTS provider.
 
@@ -431,7 +478,7 @@ def create_tts_provider(config: TTSConfig | None = None) -> TTSProvider:
         config: TTS configuration
 
     Returns:
-        TTSProvider instance
+        PiperProvider instance
     """
     config = config or TTSConfig()
 

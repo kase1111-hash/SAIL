@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from src.core.events import EventEmitter
+
 from .audio import AudioAnalysis, AudioSensor
 from .base import (
     Confidence,
@@ -138,7 +140,7 @@ class RiskAssessor:
 # ============================================================================
 
 
-class SensorFusionManager:
+class SensorFusionManager(EventEmitter[FusionEvent]):
     """
     Manages all sensors and fuses their data into unified situational awareness.
     """
@@ -158,9 +160,8 @@ class SensorFusionManager:
         # Risk assessment
         self._risk_assessor = RiskAssessor()
 
-        # Callbacks
+        self.__init_emitter__()
         self._state_callbacks: list[Callable[[SituationalState], None]] = []
-        self._event_callbacks: list[Callable[[FusionEvent], None]] = []
         self._sensor_event_callbacks: list[Callable[[SensorEvent], None]] = []
 
     @property
@@ -195,10 +196,6 @@ class SensorFusionManager:
     def register_state_callback(self, callback: Callable[[SituationalState], None]) -> None:
         """Register callback for state updates."""
         self._state_callbacks.append(callback)
-
-    def register_event_callback(self, callback: Callable[[FusionEvent], None]) -> None:
-        """Register callback for fusion events."""
-        self._event_callbacks.append(callback)
 
     def register_sensor_event_callback(self, callback: Callable[[SensorEvent], None]) -> None:
         """Register callback for sensor events."""
@@ -427,18 +424,12 @@ class SensorFusionManager:
         details: dict[str, Any] | None = None,
     ) -> None:
         """Emit a fusion event."""
-        event = FusionEvent(
+        self._emit(FusionEvent(
             event_type=event_type,
             situational_state=self._situational_state,
             trigger=trigger,
             details=details or {},
-        )
-
-        for callback in self._event_callbacks:
-            try:
-                callback(event)
-            except Exception as e:
-                logger.error(f"Event callback error: {e}")
+        ))
 
     def get_sensor_states(self) -> dict[SensorType, SensorState]:
         """Get states of all sensors."""
