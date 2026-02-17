@@ -182,34 +182,56 @@ users:
 
 ## Development Roadmap
 
-### Phase 1: Voice I/O Foundation
-- Local wake word detection
+### Phase 1-2: Core Foundation
+- Project structure with Python 3.11+ support
+- Configuration management with YAML schema validation (Pydantic)
+- CLI interface using Click with Rich formatting
+- Docker and docker-compose development environment
+- Local LLM integration (Ollama, llama.cpp)
+
+### Phase 3-4: Voice I/O
+- Local wake word detection (OpenWakeWord, Porcupine)
 - Whisper integration for speech-to-text
-- Local TTS with natural voice
-- Basic query-response loop
+- Local TTS with natural voice (Piper, Coqui)
+- Audio capture and preprocessing pipeline
+- Voice command handling
 
-### Phase 2: Context Buffer
-- Rolling memory file implementation
-- Adjustable depth configuration
-- Context persistence across sessions
+### Phase 5: Context Buffer
+- Multi-tier rolling memory architecture
+- Adaptive depth modes (driving, conversation, crisis)
+- Persistent encrypted storage with SQLite
+- Crisis mode context locking
 
-### Phase 3: Situational Awareness
-- GPS integration
+### Phase 6: Sensor Fusion
+- GPS/location integration with jurisdiction detection
 - Motion state detection
-- Calendar/time awareness
-- Intervention mode framework
+- Temporal awareness
+- Audio environment analysis
 
-### Phase 4: Knowledge Domains
-- Jurisdiction detection (state/country)
-- Legal knowledge base (traffic, employment, contracts)
-- Safety protocol library
-- Scam pattern database
+### Phase 7: Intervention Engine
+- Four intervention modes (Ambient, Advisory, Guardian, Crisis)
+- Risk assessment engine
+- Mode transition logic
+- Proportionality checking
 
-### Phase 5: Family Deployment
-- Multi-user configuration
-- Role-based access
+### Phase 8: Knowledge Domains
+- Jurisdiction-aware legal knowledge base
+- Personal safety protocols
+- Financial protection patterns
+- Emergency procedures
+- Vector similarity search (RAG pipeline)
+
+### Phase 9: Multi-User & Family System
+- Voice-based user identification
+- Role-based access control (Admin/User/Minor)
+- Per-user context isolation
 - Guardian alert system
-- Room node deployment
+
+### Phase 10: Node Deployment & Integration
+- Hub coordinator with request routing
+- Room node support (Raspberry Pi)
+- Context synchronization between nodes
+- End-to-end pipeline integration
 
 ---
 
@@ -239,8 +261,4 @@ users:
 
 ## License
 
-To be determined (considering AGPL or similar copyleft to ensure sovereignty principles propagate)
-
----
-
-*Document generated from SAIL README.md*
+MIT License - See [LICENSE](LICENSE) for details.

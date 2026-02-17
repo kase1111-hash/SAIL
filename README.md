@@ -10,6 +10,63 @@ A teenager with their first job and first car faces hundreds of potential pitfal
 
 SAIL closes the gap between where knowledge lives and where decisions happen.
 
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- [Ollama](https://ollama.ai/) running locally with a model (e.g., Llama 3 or Mistral)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/sail.git
+cd sail
+
+# Create a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install SAIL with all optional dependencies
+pip install -e ".[all]"
+
+# Or install with just core dependencies (no voice hardware needed)
+pip install -e ".[dev]"
+
+# Initialize configuration
+sail init
+
+# Verify your setup
+sail check
+```
+
+### Running SAIL
+
+```bash
+# Start Ollama in a separate terminal
+ollama serve
+
+# Run SAIL in text mode (no audio hardware needed)
+sail run --text-mode
+
+# Run SAIL with full voice I/O
+sail run
+
+# Run in hub mode (accepts connections from room nodes)
+sail run --hub --text-mode
+```
+
+### Available Commands
+
+```bash
+sail run              # Start the assistant
+sail init             # Create a configuration file
+sail check            # Verify system requirements
+sail config-show      # Display current configuration
+sail users            # List configured users
+```
+
 ## Design Principles
 
 - **Sovereignty**: All processing local. Context never leaves your hardware.
@@ -156,6 +213,20 @@ Primary: Home server (Digital Tractor architecture) with satellite nodes.
 - **Text-to-speech**: Piper / Coqui TTS
 - **Wake word**: OpenWakeWord / Porcupine (offline)
 - **LLM**: Llama 3 / Mistral via Ollama or llama.cpp
+
+## How It Works
+
+All components are connected through a central `Pipeline` class (`src/pipeline.py`) that orchestrates query processing:
+
+1. User input arrives (via text or voice)
+2. Input is added to the context buffer
+3. Knowledge domains are searched via RAG pipeline
+4. Sensor context (time, location) enriches the query
+5. The LLM generates a response with knowledge and context
+6. The intervention engine evaluates risk level
+7. Response is returned with citations and any interventions
+
+The CLI (`src/cli.py`) provides text mode, voice mode, and hub mode entry points that all route through this pipeline.
 
 ## Constitution
 

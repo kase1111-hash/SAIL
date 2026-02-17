@@ -1,5 +1,11 @@
 # SAIL Refocus Plan
 
+> **Note:** This plan was written before the pipeline integration and cleanup work was
+> completed. Key actions from this plan have since been executed: the deployment module
+> was deleted, mobile/vehicle nodes were removed, and the CLI was wired to a working
+> `Pipeline` class (`src/pipeline.py`) that connects LLM, context, knowledge, intervention,
+> sensors, and user management end-to-end. This document is retained as historical context.
+
 This plan restructures SAIL from 22,500 lines of disconnected components into a working product. It is organized into 4 phases, each ending with a demonstrable milestone.
 
 ---

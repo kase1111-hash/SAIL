@@ -17,23 +17,23 @@ A 10-phase implementation guide for building the Situational Awareness Interacti
 ```
 sail/
 ├── src/
-│   ├── core/                 # Core application logic
-│   ├── voice/                # Voice I/O components
+│   ├── cli.py               # Click CLI entry point
+│   ├── pipeline.py           # End-to-end query pipeline
+│   ├── core/                 # Core application logic (LLM, events, stats)
+│   ├── voice/                # Voice I/O components (STT, TTS, wake word)
 │   ├── context/              # Context buffer system
 │   ├── sensors/              # Sensor fusion layer
 │   ├── knowledge/            # Knowledge domain modules
+│   │   └── domains/          # Legal, safety, financial, emergency
 │   ├── intervention/         # Intervention mode logic
-│   └── config/               # Configuration management
-├── nodes/
-│   ├── room/                 # Room node code (Raspberry Pi)
-│   ├── mobile/               # Mobile app code
-│   └── vehicle/              # Vehicle node code
-├── models/                   # Local AI model configs
-├── data/
-│   ├── knowledge_base/       # Legal/safety knowledge files
-│   └── jurisdictions/        # Jurisdiction-specific data
+│   ├── config/               # Configuration management
+│   ├── users/                # Multi-user management
+│   ├── hub/                  # Hub coordinator (distributed mode)
+│   └── nodes/                # Satellite nodes (room node)
 ├── tests/
-├── docs/
+│   ├── unit/
+│   └── integration/
+├── config/                   # Default configuration files
 └── scripts/                  # Setup and deployment scripts
 ```
 
@@ -644,16 +644,18 @@ class HubCoordinator:
 
 | Phase | Component | Status |
 |-------|-----------|--------|
-| 1 | Project Foundation | [ ] |
-| 2 | Local LLM Integration | [ ] |
-| 3 | Voice Input Pipeline | [ ] |
-| 4 | Voice Output Pipeline | [ ] |
-| 5 | Context Buffer System | [ ] |
-| 6 | Sensor Fusion Layer | [ ] |
-| 7 | Intervention Framework | [ ] |
-| 8 | Knowledge Domains | [ ] |
-| 9 | Multi-User System | [ ] |
-| 10 | Node Deployment | [ ] |
+| 1 | Project Foundation | [x] |
+| 2 | Local LLM Integration | [x] |
+| 3 | Voice Input Pipeline | [x] |
+| 4 | Voice Output Pipeline | [x] |
+| 5 | Context Buffer System | [x] |
+| 6 | Sensor Fusion Layer | [x] |
+| 7 | Intervention Framework | [x] |
+| 8 | Knowledge Domains | [x] |
+| 9 | Multi-User System | [x] |
+| 10 | Node Deployment | [x] |
+
+All phases have been implemented. The end-to-end pipeline (`src/pipeline.py`) connects all components and is accessible via the CLI (`sail run`).
 
 ---
 

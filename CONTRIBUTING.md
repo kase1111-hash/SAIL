@@ -207,21 +207,21 @@ Understanding the codebase structure helps with contributions:
 
 ```
 src/
-├── cli.py              # Command-line interface
-├── core/               # Core LLM and utilities
-├── config/             # Configuration management
-├── voice/              # Voice I/O (wake word, STT, TTS)
-├── context/            # Context buffer system
-├── sensors/            # Sensor fusion
-├── users/              # Multi-user management
-├── intervention/       # Intervention mode engine
-├── knowledge/          # Knowledge domains
-├── hub/                # Central hub coordinator
-├── nodes/              # Satellite nodes (room, mobile, vehicle)
-└── deployment/         # Deployment utilities
+├── cli.py              # Command-line interface (Click + Rich)
+├── pipeline.py         # End-to-end query processing pipeline
+├── core/               # Core LLM integration and utilities
+├── config/             # Configuration management (Pydantic + YAML)
+├── voice/              # Voice I/O (wake word, STT, TTS, audio capture)
+├── context/            # Multi-tier context buffer system
+├── sensors/            # Sensor fusion (location, motion, temporal, audio)
+├── users/              # Multi-user management and family system
+├── intervention/       # Intervention mode engine and risk assessment
+├── knowledge/          # Knowledge domains and RAG retrieval
+├── hub/                # Central hub coordinator (distributed mode)
+└── nodes/              # Satellite nodes (room node for Raspberry Pi)
 ```
 
-See `DEVELOPMENT_GUIDE.md` for detailed architecture documentation.
+The `Pipeline` class in `pipeline.py` is the core integration point that connects all subsystems. See `DEVELOPMENT_GUIDE.md` for detailed architecture documentation.
 
 ## Communication
 

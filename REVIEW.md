@@ -1,5 +1,11 @@
 # SAIL Project Review: Concept-Execution Evaluation
 
+> **Note:** This review was written before the pipeline integration work was completed.
+> Several issues identified here have since been addressed: the CLI now connects all
+> components through `src/pipeline.py`, the deployment module has been deleted, and the
+> mobile/vehicle nodes have been removed. This document is retained as historical context
+> for the project's development trajectory.
+
 ---
 
 ## Primary Classification

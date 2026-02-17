@@ -1,5 +1,11 @@
 # SAIL Software Audit Report
 
+> **Note:** This audit was conducted on 2026-01-28 against version 0.1.0. Since then,
+> the `src/deployment/` module (provisioning, OTA, health monitoring) has been deleted
+> entirely, and mobile/vehicle node code has been removed. Issues referencing those
+> modules are no longer applicable. Other findings may still be relevant and should be
+> verified against the current codebase.
+
 **Date:** 2026-01-28
 **Auditor:** Claude Code
 **Version:** 0.1.0 Pre-Alpha

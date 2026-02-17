@@ -113,6 +113,6 @@ This is the initial release. For new installations:
 1. Ensure Python 3.11+ is installed
 2. Install with: `pip install -e ".[all]"`
 3. Initialize configuration: `sail init`
-4. Run system check: `sail system-check`
+4. Run system check: `sail check`
 
 See the README and DEVELOPMENT_GUIDE for detailed setup instructions.
