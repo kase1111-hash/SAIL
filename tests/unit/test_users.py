@@ -295,13 +295,28 @@ class TestPermissions:
         assert not result.allowed
         assert UserRestriction.NO_DISABLE_ALERTS in result.restrictions_triggered
 
+    def test_override_guardian_mode_requires_elevated_access(self):
+        """A plain USER role does not get guardian override from its role alone."""
+        from src.users.permissions import Permission, PermissionChecker
+
+        user = User(name="User", role=UserRole.USER, access_level=AccessLevel.STANDARD)
+        checker = PermissionChecker()
+
+        result = checker.check_permission(user, Permission.OVERRIDE_GUARDIAN_MODE)
+
+        assert not result.allowed
+        assert not result.restrictions_triggered
+
     def test_context_affects_permission(self):
         """Test that context affects permissions."""
         from src.users.permissions import Permission, PermissionChecker, PermissionContext
 
+        # FULL access grants OVERRIDE_GUARDIAN_MODE, so this exercises the
+        # context/restriction logic rather than the role gate.
         user = User(
             name="User",
             role=UserRole.USER,
+            access_level=AccessLevel.FULL,
             restrictions=[UserRestriction.NO_OVERRIDE_GUARDIAN_WHILE_DRIVING],
         )
         checker = PermissionChecker()
@@ -714,7 +729,7 @@ class TestUserManager:
 
     @pytest.mark.asyncio
     async def test_identify_user_explicit(self):
-        """Test explicit user identification."""
+        """Explicit identification works without voice ID, at reduced confidence."""
         from src.users.manager import UserManager
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -731,7 +746,29 @@ class TestUserManager:
 
             assert user is not None
             assert user.name == "Test User"
-            assert confidence == 1.0
+            # An unverified name claim is trusted only partially, since there
+            # is no voice check available to back it up.
+            assert confidence == 0.5
+
+    @pytest.mark.asyncio
+    async def test_identify_user_explicit_rejected_without_audio(self):
+        """With voice ID enabled, a bare name claim is rejected as unverifiable."""
+        from src.users.manager import UserManager
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = UserManagerConfig(
+                data_path=Path(tmpdir),
+                voice_id_enabled=True,
+            )
+            manager = UserManager(config)
+            await manager.initialize()
+
+            manager.register_user("Test User", UserRole.USER)
+
+            user, confidence = await manager.identify_user(explicit_name="Test User")
+
+            assert user is None
+            assert confidence == 0.0
 
     @pytest.mark.asyncio
     async def test_session_management(self):

@@ -80,7 +80,7 @@ all = [
 ]
 
 [project.scripts]
-sail = "sail.cli:main"
+sail = "src.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/sail-project/sail"

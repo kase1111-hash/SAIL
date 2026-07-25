@@ -504,6 +504,8 @@ def check() -> None:
         console.print("[green]All checks passed![/green]")
     else:
         console.print("[yellow]Some checks failed. SAIL may not function correctly.[/yellow]")
+        # Exit non-zero so scripts and CI can detect a failed environment check.
+        sys.exit(1)
 
 
 def _check_python() -> tuple[bool, str]:

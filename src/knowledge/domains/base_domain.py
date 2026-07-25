@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -22,6 +23,35 @@ from src.knowledge.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Words that carry no retrieval signal. Every knowledge item contains most of
+# these, so scoring them lets an unrelated item outrank the right one purely on
+# filler-word overlap.
+STOP_WORDS = frozenset({
+    "a", "about", "am", "an", "and", "any", "are", "as", "at", "be", "been",
+    "but", "by", "can", "did", "do", "does", "for", "from", "get", "had",
+    "has", "have", "he", "her", "here", "him", "his", "how", "i", "if", "in",
+    "into", "is", "it", "its", "just", "me", "my", "no", "not", "of", "on",
+    "or", "our", "out", "she", "should", "so", "some", "than", "that", "the",
+    "their", "them", "then", "there", "they", "this", "to", "up", "was", "we",
+    "were", "what", "when", "where", "which", "who", "why", "will", "with",
+    "would", "you", "your",
+})
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+def tokenize_query(text: str) -> list[str]:
+    """Split query text into meaningful lowercase search tokens.
+
+    Strips punctuation (so ``"choking,"`` matches ``"choking"``) and drops
+    stop words and single characters, which otherwise dominate keyword scores.
+    """
+    return [
+        token
+        for token in _TOKEN_RE.findall(text.lower())
+        if len(token) > 1 and token not in STOP_WORDS
+    ]
 
 
 class BaseKnowledgeDomain(KnowledgeDomain):
@@ -96,7 +126,7 @@ class BaseKnowledgeDomain(KnowledgeDomain):
             jurisdiction_filtered = True
 
         # Score items
-        query_words = query.query_text.lower().split()
+        query_words = tokenize_query(query.query_text)
         scored_items: list[tuple[KnowledgeItem, float]] = []
         for item in candidates:
             score = self._calculate_relevance_score(item, query_words, query)

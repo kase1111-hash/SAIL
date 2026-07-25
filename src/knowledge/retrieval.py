@@ -132,10 +132,11 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         for word in words:
             # Hash the word to get a consistent seed
             word_hash = int(hashlib.md5(word.encode()).hexdigest(), 16)
-            np.random.seed(word_hash % (2**32))
 
-            # Add random vector for this word
-            word_vec = np.random.randn(dim)
+            # Use a local generator: seeding the global np.random state here
+            # would reset it for the whole process on every embedded word.
+            rng = np.random.default_rng(word_hash % (2**32))
+            word_vec = rng.standard_normal(dim)
             embedding += word_vec
 
         # Normalize
@@ -543,29 +544,40 @@ class RAGPipeline:
         )
 
         # If domains provided, also query them directly
-        domain_items: list[KnowledgeItem] = []
+        domain_scored: list[tuple[KnowledgeItem, float]] = []
         if domains:
             for domain in domains:
                 if query.domain and domain.domain_type != query.domain:
                     continue
 
                 domain_result = await domain.query(query)
-                domain_items.extend(domain_result.items)
+                domain_scored.extend(
+                    zip(domain_result.items, domain_result.scores, strict=False)
+                )
 
-        # Merge results, preferring RAG results
-        seen_ids = {item.item_id for item in rag_result.items}
-        merged_items = list(rag_result.items)
-        merged_scores = list(rag_result.scores)
+        # Domain queries return unbounded keyword tallies that are only ranked
+        # within a single domain. Scale them into [0, 1] against the best match
+        # seen across every domain so they are comparable both with each other
+        # and with the RAG cosine similarities.
+        max_domain_score = max((s for _, s in domain_scored), default=0.0)
 
-        for item in domain_items:
-            if item.item_id not in seen_ids:
-                merged_items.append(item)
-                merged_scores.append(0.5)  # Default score for keyword results
-                seen_ids.add(item.item_id)
+        # Merge on item_id, keeping the strongest signal for each item.
+        scored: dict[str, tuple[KnowledgeItem, float]] = {
+            item.item_id: (item, score)
+            for item, score in zip(rag_result.items, rag_result.scores, strict=False)
+        }
+        for item, score in domain_scored:
+            normalized = score / max_domain_score if max_domain_score > 0 else 0.0
+            existing = scored.get(item.item_id)
+            if existing is None or normalized > existing[1]:
+                scored[item.item_id] = (item, normalized)
 
-        # Trim to max results
-        merged_items = merged_items[:query.max_results]
-        merged_scores = merged_scores[:query.max_results]
+        # Rank by relevance, then trim. Ranking here is what keeps the
+        # first-registered domain from monopolizing the results.
+        ranked = sorted(scored.values(), key=lambda pair: pair[1], reverse=True)
+        ranked = ranked[: query.max_results]
+        merged_items = [item for item, _ in ranked]
+        merged_scores = [score for _, score in ranked]
 
         result = KnowledgeResult(
             query_id=query.query_id,
