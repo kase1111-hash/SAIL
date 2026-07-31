@@ -411,6 +411,8 @@ class Pipeline:
             context["location_context"] = situational.location_context.value
             context["audio_environment"] = situational.audio_environment.value
             context["stress_level"] = situational.stress_level.value
+            if situational.speed_mps is not None:
+                context["speed_mps"] = situational.speed_mps
             if situational.threat_cues:
                 context["threat_cues"] = situational.threat_cues
             if situational.risk_factors:

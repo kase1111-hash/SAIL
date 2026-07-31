@@ -285,6 +285,49 @@ class TestRiskAssessmentEngine:
         assert assessment.level in (RiskLevel.MODERATE, RiskLevel.HIGH, RiskLevel.CRITICAL)
         assert assessment.recommended_mode != InterventionMode.AMBIENT
 
+    def test_high_speed_driving_is_detected(self):
+        """speed_mps was read from context and then never used."""
+        from src.intervention.risk import RiskAssessmentEngine
+
+        engine = RiskAssessmentEngine()
+        assessment = engine.assess({
+            "motion_state": "driving",
+            "speed_mps": 40.0,  # 144 km/h
+        })
+
+        names = [f.name for f in assessment.factors]
+        assert "high_speed_driving" in names
+
+    def test_normal_speed_driving_is_not_flagged(self):
+        """Ordinary highway speed must not register as a risk factor."""
+        from src.intervention.risk import RiskAssessmentEngine
+
+        engine = RiskAssessmentEngine()
+        assessment = engine.assess({
+            "motion_state": "driving",
+            "speed_mps": 25.0,  # 90 km/h
+        })
+
+        names = [f.name for f in assessment.factors]
+        assert "high_speed_driving" not in names
+
+    def test_high_speed_ignored_when_not_driving(self):
+        """The factor is about driving, so it needs the motion state to agree."""
+        from src.intervention.risk import RiskAssessmentEngine
+
+        engine = RiskAssessmentEngine()
+        assessment = engine.assess({"motion_state": "stationary", "speed_mps": 40.0})
+
+        names = [f.name for f in assessment.factors]
+        assert "high_speed_driving" not in names
+
+    def test_risk_speed_threshold_matches_fusion(self):
+        """The two risk paths score the same signal and must not drift apart."""
+        from src.intervention.risk import HIGH_SPEED_KMH
+        from src.sensors.fusion import HIGH_SPEED_KMH as FUSION_HIGH_SPEED_KMH
+
+        assert HIGH_SPEED_KMH == FUSION_HIGH_SPEED_KMH
+
     def test_assess_with_factors(self):
         """Test assessment with pre-detected factors."""
         from src.intervention.risk import RiskAssessmentEngine

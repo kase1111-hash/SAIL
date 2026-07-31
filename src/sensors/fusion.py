@@ -34,6 +34,11 @@ from .temporal import TemporalAnalysis, TemporalSensor
 
 logger = logging.getLogger(__name__)
 
+# Speed above which driving is treated as a risk factor. Mirrored by
+# HIGH_SPEED_KMH in src.intervention.risk, which scores the same signal for the
+# intervention engine; a test asserts the two stay equal.
+HIGH_SPEED_KMH = 120.0
+
 
 # ============================================================================
 # Fusion Event Types
@@ -123,7 +128,7 @@ class RiskAssessor:
         # High speed driving
         if state.motion_state == MotionState.DRIVING and state.speed_mps:
             speed_kmh = state.speed_mps * 3.6
-            if speed_kmh > 120:  # Over 120 km/h
+            if speed_kmh > HIGH_SPEED_KMH:
                 risk_score += self.risk_weights["driving_high_speed"]
                 factors.append(f"High speed driving: {speed_kmh:.0f} km/h")
 
