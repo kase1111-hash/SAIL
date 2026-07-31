@@ -543,6 +543,11 @@ class KnowledgeConfig:
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     similarity_threshold: float = 0.5
 
+    # Minimum normalized keyword score for a domain hit to be cited. Filters
+    # incidental one-word overlap ("what is the weather" brushing against a
+    # car-accident item) that would otherwise be presented as a source.
+    min_domain_relevance: float = 0.25
+
     # Domain settings
     enabled_domains: list[KnowledgeDomainType] = field(
         default_factory=lambda: [
@@ -571,6 +576,7 @@ class KnowledgeConfig:
             "enable_rag": self.enable_rag,
             "embedding_model": self.embedding_model,
             "similarity_threshold": self.similarity_threshold,
+            "min_domain_relevance": self.min_domain_relevance,
             "enabled_domains": [d.value for d in self.enabled_domains],
             "require_citations": self.require_citations,
             "include_source_urls": self.include_source_urls,

@@ -40,6 +40,73 @@ STOP_WORDS = frozenset({
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
+# Per-token scoring weights. Tuned against the relevance cases in
+# tests/integration/test_retrieval_relevance.py -- raising the title weight
+# further was measured to make ranking worse, not better, because several
+# correct answers do not name the topic in their title.
+TEXT_MATCH_SCORE = 1.0
+KEYWORD_MATCH_SCORE = 2.0
+TITLE_MATCH_SCORE = 1.5
+
+# Relevance-level multipliers. Deliberately gentle: a large spread lets a
+# CRITICAL item that barely matches the query outrank the HIGH item that
+# actually answers it.
+RELEVANCE_BOOSTS = {
+    KnowledgeRelevance.CRITICAL: 1.3,
+    KnowledgeRelevance.HIGH: 1.15,
+    KnowledgeRelevance.MEDIUM: 1.0,
+    KnowledgeRelevance.LOW: 0.9,
+    KnowledgeRelevance.INFORMATIONAL: 0.8,
+}
+
+# Best score a single query token can contribute: a body-text hit that is also
+# a keyword and appears in the title, at the largest relevance multiplier. Used
+# to normalize raw tallies into a query-length-independent ratio. Subclass
+# boosts can push a score past this, so callers clamp.
+MAX_TOKEN_SCORE = (
+    TEXT_MATCH_SCORE + KEYWORD_MATCH_SCORE + TITLE_MATCH_SCORE
+) * max(RELEVANCE_BOOSTS.values())
+
+# Suffixes stripped when reducing a token to its stem. Deliberately excludes
+# "es": stripping it turns "quotes" into "quot" while "quote" stays put, so the
+# two forms stop matching. Plain "s" plurals dominate this corpus anyway.
+_SUFFIXES = ("ing", "ed", "s")
+
+# Minimum length of the remainder after stripping a suffix. Without this,
+# "is" -> "" and "thing" -> "th".
+_MIN_STEM_LEN = 3
+
+
+def _collapse_doubled_consonant(stem: str) -> str:
+    """Collapse a trailing doubled consonant ("stopp" -> "stop").
+
+    Applied to every stem rather than only to suffix-stripped ones. Doing it
+    on both sides is what keeps the pairs consistent: "stopped" -> "stopp" ->
+    "stop" needs the collapse, and "called" -> "call" -> "cal" only matches
+    "call" because "call" is collapsed to "cal" too.
+    """
+    if len(stem) > _MIN_STEM_LEN and stem[-1] == stem[-2] and stem[-1] not in "aeiou":
+        return stem[:-1]
+    return stem
+
+
+def stem_token(token: str) -> str:
+    """Reduce a token to a crude stem so word forms match each other.
+
+    Handles the plural/participle forms that dominate this corpus:
+    ``scams`` -> ``scam``, ``rights`` -> ``right``, ``stopped`` -> ``stop``.
+    Deliberately conservative -- it is only ever compared against other stems,
+    so under-stemming costs a match while over-stemming invents one.
+    """
+    if token.endswith("ies") and len(token) - 3 >= _MIN_STEM_LEN - 1:
+        return token[:-3] + "y"
+
+    for suffix in _SUFFIXES:
+        if token.endswith(suffix) and len(token) - len(suffix) >= _MIN_STEM_LEN:
+            return _collapse_doubled_consonant(token[: -len(suffix)])
+
+    return _collapse_doubled_consonant(token)
+
 
 def tokenize_query(text: str) -> list[str]:
     """Split query text into meaningful lowercase search tokens.
@@ -54,6 +121,15 @@ def tokenize_query(text: str) -> list[str]:
     ]
 
 
+def tokenize_stems(text: str) -> set[str]:
+    """Tokenize text into a set of stems for word-boundary matching.
+
+    Matching against this set instead of doing a substring test on the raw
+    text is what stops ``"quit"`` from scoring a hit on ``"quite"``.
+    """
+    return {stem_token(token) for token in _TOKEN_RE.findall(text.lower())}
+
+
 class BaseKnowledgeDomain(KnowledgeDomain):
     """Shared implementation for all knowledge domains.
 
@@ -65,6 +141,31 @@ class BaseKnowledgeDomain(KnowledgeDomain):
 
     def __init__(self, domain_type: KnowledgeDomainType, data_path: Path | None = None):
         super().__init__(domain_type, data_path)
+        # item_id -> (text stems, keyword stems, title stems). Items are static
+        # once loaded, so stemming every item on every query is pure waste.
+        self._stem_cache: dict[str, tuple[set[str], set[str], set[str]]] = {}
+
+    def add_item(self, item: KnowledgeItem) -> None:
+        """Add an item, dropping any stale cached stems for that item id."""
+        super().add_item(item)
+        self._stem_cache.pop(item.item_id, None)
+
+    def _item_stems(self, item: KnowledgeItem) -> tuple[set[str], set[str], set[str]]:
+        """Return cached (text, keyword, title) stem sets for an item."""
+        cached = self._stem_cache.get(item.item_id)
+        if cached is None:
+            keyword_text = " ".join(item.keywords)
+            cached = (
+                tokenize_stems(
+                    f"{item.title} {item.content} {item.summary} {keyword_text}"
+                ),
+                # Keywords are tokenized rather than compared whole, so the
+                # query word "traffic" matches the keyword "traffic stop".
+                tokenize_stems(keyword_text),
+                tokenize_stems(item.title),
+            )
+            self._stem_cache[item.item_id] = cached
+        return cached
 
     # ------------------------------------------------------------------
     # Load
@@ -162,30 +263,21 @@ class BaseKnowledgeDomain(KnowledgeDomain):
     ) -> float:
         """Compute relevance score with shared algorithm + domain boosts."""
         score = 0.0
-        item_text = f"{item.title} {item.content} {item.summary} {' '.join(item.keywords)}".lower()
+        text_stems, keyword_stems, title_stems = self._item_stems(item)
 
-        # Keyword matching
+        # Keyword matching. Stems are compared as whole tokens, so "quit" no
+        # longer scores a hit against "quite" while "scams" still matches
+        # "scam".
         for word in query_words:
-            if word in item_text:
-                score += 1.0
-            if word in [k.lower() for k in item.keywords]:
-                score += 2.0
+            stem = stem_token(word)
+            if stem in text_stems:
+                score += TEXT_MATCH_SCORE
+            if stem in keyword_stems:
+                score += KEYWORD_MATCH_SCORE
+            if stem in title_stems:
+                score += TITLE_MATCH_SCORE
 
-        # Title match boost
-        title_lower = item.title.lower()
-        for word in query_words:
-            if word in title_lower:
-                score += 1.5
-
-        # Relevance level boost
-        relevance_boosts = {
-            KnowledgeRelevance.CRITICAL: 3.0,
-            KnowledgeRelevance.HIGH: 2.0,
-            KnowledgeRelevance.MEDIUM: 1.0,
-            KnowledgeRelevance.LOW: 0.5,
-            KnowledgeRelevance.INFORMATIONAL: 0.25,
-        }
-        score *= relevance_boosts.get(item.relevance, 1.0)
+        score *= RELEVANCE_BOOSTS.get(item.relevance, 1.0)
 
         # Domain-specific boost (subclass hook)
         score = self._apply_domain_boost(item, query_words, query, score)

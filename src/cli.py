@@ -24,6 +24,10 @@ from .config import (
 
 console = Console()
 
+# Typed at the prompt these end the session. Without them "quit" was sent to
+# the model as a question, which is never what the user meant.
+EXIT_COMMANDS = frozenset({"/quit", "/exit", "quit", "exit", ":q"})
+
 
 def print_banner() -> None:
     """Print the SAIL banner."""
@@ -129,7 +133,10 @@ async def _run_text_mode(config) -> None:
         console.print("[dim]Is Ollama running? Try: ollama serve[/dim]")
         return
 
-    console.print("[green]SAIL ready.[/green] Type your question (Ctrl+C to exit).")
+    console.print(
+        "[green]SAIL ready.[/green] Type your question "
+        "(or 'quit' / Ctrl+C to exit)."
+    )
     if config.users:
         console.print("[dim]Commands: /user <name> to switch user, /users to list users[/dim]")
     console.print()
@@ -147,6 +154,9 @@ async def _run_text_mode(config) -> None:
 
             if not user_input:
                 continue
+
+            if user_input.lower() in EXIT_COMMANDS:
+                break
 
             # Handle /user command
             if user_input.startswith("/user "):
