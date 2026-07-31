@@ -18,6 +18,7 @@ from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from src.context.base import (
     ContextEntry,

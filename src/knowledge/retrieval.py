@@ -30,8 +30,41 @@ from src.knowledge.base import (
     KnowledgeQuery,
     KnowledgeResult,
 )
+from src.knowledge.domains.base_domain import (
+    MAX_TOKEN_SCORE,
+    stem_token,
+    tokenize_query,
+)
 
 logger = logging.getLogger(__name__)
+
+
+# Cosine threshold for the TF-IDF fallback embeddings. Measured against the
+# bundled corpus: on-topic query/document pairs score 0.17-0.42, while the best
+# score any nonsense query reaches is 0.16. The bands nearly touch, so this sits
+# at the conservative end -- RAG only supplements keyword matching here, and a
+# confidently wrong citation costs more than a missed supplementary one.
+#
+# The sentence-transformer default of 0.5 is above anything these embeddings
+# produce, which is what left semantic search returning nothing for every query.
+FALLBACK_SIMILARITY_THRESHOLD = 0.25
+
+
+def normalize_domain_score(score: float, query_token_count: int) -> float:
+    """Map a raw keyword tally into [0, 1] as a fraction of the best possible.
+
+    Absolute rather than relative: the previous ``score / max_score`` made the
+    best hit exactly 1.0 for *every* query, so a query that merely grazed one
+    irrelevant item was reported with the same confidence as an exact match.
+
+    Dividing by the per-token maximum keeps the result comparable across
+    queries of different lengths -- a two-word query can only ever accumulate
+    a fraction of what a six-word query does, which would otherwise make short
+    questions look uniformly irrelevant.
+    """
+    if score <= 0 or query_token_count <= 0:
+        return 0.0
+    return min(score / (MAX_TOKEN_SCORE * query_token_count), 1.0)
 
 
 # ============================================================================
@@ -73,6 +106,21 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         self._use_sentence_transformers = False
         self._vocabulary: dict[str, int] = {}
         self._idf: dict[str, float] = {}
+        # IDF for a token absent from the corpus. A query word no document
+        # contains is maximally distinctive, so it gets the highest weight.
+        self._default_idf: float = 1.0
+        self._word_vectors: dict[str, np.ndarray] = {}
+
+    @property
+    def similarity_threshold(self) -> float:
+        """Cosine threshold appropriate to the embeddings actually in use.
+
+        The fallback embeddings are a random projection of a TF-IDF bag of
+        words, whose cosines sit far below what a trained sentence encoder
+        produces. Applying the sentence-transformer threshold to them rejects
+        every result, which silently disabled semantic search entirely.
+        """
+        return 0.5 if self._use_sentence_transformers else FALLBACK_SIMILARITY_THRESHOLD
 
     async def initialize(self) -> bool:
         """Initialize the embedding model."""
@@ -116,28 +164,37 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         else:
             return [self._simple_embed(text) for text in texts]
 
-    def _simple_embed(self, text: str, dim: int = 384) -> list[float]:
-        """
-        Generate a simple hash-based embedding.
-
-        This is a fallback when sentence-transformers is not available.
-        It uses a consistent hashing approach to generate pseudo-embeddings.
-        """
-        # Tokenize
-        words = text.lower().split()
-
-        # Create embedding from word hashes
-        embedding = np.zeros(dim)
-
-        for word in words:
-            # Hash the word to get a consistent seed
-            word_hash = int(hashlib.md5(word.encode()).hexdigest(), 16)
-
+    def _word_vector(self, token: str, dim: int) -> np.ndarray:
+        """Deterministic random unit vector for a token, cached."""
+        cached = self._word_vectors.get(token)
+        if cached is None or cached.shape[0] != dim:
+            token_hash = int(hashlib.md5(token.encode()).hexdigest(), 16)
             # Use a local generator: seeding the global np.random state here
             # would reset it for the whole process on every embedded word.
-            rng = np.random.default_rng(word_hash % (2**32))
-            word_vec = rng.standard_normal(dim)
-            embedding += word_vec
+            rng = np.random.default_rng(token_hash % (2**32))
+            cached = rng.standard_normal(dim)
+            self._word_vectors[token] = cached
+        return cached
+
+    def _simple_embed(self, text: str, dim: int = 384) -> list[float]:
+        """
+        Generate a TF-IDF weighted hash embedding.
+
+        This is a fallback when sentence-transformers is not available. It is a
+        random projection of the text's TF-IDF bag of words, which approximately
+        preserves the cosine similarity of the underlying sparse vectors.
+
+        Tokens are stop-word filtered and stemmed with the same helpers the
+        keyword scorer uses, so the two retrieval halves agree on what a word
+        is: without this, filler words dominated every vector and made all
+        documents look alike.
+        """
+        tokens = [stem_token(token) for token in tokenize_query(text)]
+
+        embedding = np.zeros(dim)
+        for token in tokens:
+            weight = self._idf.get(token, self._default_idf)
+            embedding += weight * self._word_vector(token, dim)
 
         # Normalize
         norm = np.linalg.norm(embedding)
@@ -147,18 +204,32 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         return embedding.tolist()
 
     def build_vocabulary(self, texts: list[str]) -> None:
-        """Build vocabulary from texts for TF-IDF fallback."""
+        """Build IDF weights from the corpus for the TF-IDF fallback.
+
+        Called at index time. Without it every token carries equal weight and
+        common corpus words ("scam", "call", "safety") drown out the ones that
+        actually discriminate between documents.
+        """
         word_doc_count: dict[str, int] = {}
         total_docs = len(texts)
+        if total_docs == 0:
+            return
 
         for text in texts:
-            words = set(text.lower().split())
+            words = {stem_token(token) for token in tokenize_query(text)}
             for word in words:
                 word_doc_count[word] = word_doc_count.get(word, 0) + 1
 
-        # Calculate IDF
+        # Smoothed IDF, always positive. The unsmoothed log(N / (df + 1)) goes
+        # negative for any word appearing in most documents, which would flip
+        # that word's contribution and push matching documents apart.
         for word, count in word_doc_count.items():
-            self._idf[word] = np.log(total_docs / (count + 1))
+            self._idf[word] = float(np.log((1 + total_docs) / (1 + count)) + 1.0)
+
+        self._default_idf = float(np.log(1 + total_docs) + 1.0)
+
+        # Weights changed, so any vectors built under the old ones are stale.
+        self._word_vectors.clear()
 
         # Build vocabulary index
         self._vocabulary = {word: i for i, word in enumerate(sorted(word_doc_count.keys()))}
@@ -387,6 +458,13 @@ class RAGPipeline:
             texts.append(text)
             valid_items.append(item)
 
+        # Fit IDF weights on the corpus before embedding it. Query embeddings
+        # generated later reuse these weights, so both sides of the comparison
+        # live in the same space.
+        build_vocabulary = getattr(self._embedding_provider, "build_vocabulary", None)
+        if callable(build_vocabulary):
+            build_vocabulary(texts)
+
         # Generate embeddings in batch
         embeddings = await self._embedding_provider.embed_batch(texts)
 
@@ -407,6 +485,21 @@ class RAGPipeline:
 
         logger.info(f"Indexed {indexed} items for semantic search")
         return indexed
+
+    def _similarity_threshold(self) -> float:
+        """Cosine threshold to apply, deferring to the embedding provider.
+
+        ``KnowledgeConfig.similarity_threshold`` is calibrated for a trained
+        sentence encoder. When the provider reports its own threshold -- as the
+        TF-IDF fallback does, on a much lower cosine scale -- honour that
+        instead, so semantic search does not silently return nothing.
+        """
+        provider_threshold = getattr(
+            self._embedding_provider, "similarity_threshold", None
+        )
+        if provider_threshold is None:
+            return self.config.similarity_threshold
+        return float(provider_threshold)
 
     def _item_to_text(self, item: KnowledgeItem) -> str:
         """Convert a knowledge item to searchable text."""
@@ -446,7 +539,7 @@ class RAGPipeline:
         results = self._vector_store.search(
             query_embedding,
             top_k=max_results * 2,  # Get extra for filtering
-            threshold=self.config.similarity_threshold,
+            threshold=self._similarity_threshold(),
         )
 
         # Filter and rank results
@@ -555,19 +648,18 @@ class RAGPipeline:
                     zip(domain_result.items, domain_result.scores, strict=False)
                 )
 
-        # Domain queries return unbounded keyword tallies that are only ranked
-        # within a single domain. Scale them into [0, 1] against the best match
-        # seen across every domain so they are comparable both with each other
-        # and with the RAG cosine similarities.
-        max_domain_score = max((s for _, s in domain_scored), default=0.0)
-
-        # Merge on item_id, keeping the strongest signal for each item.
+        # Merge on item_id, keeping the strongest signal for each item. RAG
+        # results are already gated by ``similarity_threshold``; domain hits
+        # carry their own floor, applied below.
         scored: dict[str, tuple[KnowledgeItem, float]] = {
             item.item_id: (item, score)
             for item, score in zip(rag_result.items, rag_result.scores, strict=False)
         }
+        query_token_count = len(tokenize_query(query.query_text))
         for item, score in domain_scored:
-            normalized = score / max_domain_score if max_domain_score > 0 else 0.0
+            normalized = normalize_domain_score(score, query_token_count)
+            if normalized < self.config.min_domain_relevance:
+                continue
             existing = scored.get(item.item_id)
             if existing is None or normalized > existing[1]:
                 scored[item.item_id] = (item, normalized)
