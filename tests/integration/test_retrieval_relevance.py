@@ -16,6 +16,9 @@ items from whichever domain happened to be registered first:
 
 from __future__ import annotations
 
+import sys
+import types
+
 import numpy as np
 import pytest
 from src.knowledge.base import KnowledgeDomainType
@@ -226,13 +229,22 @@ class TestSemanticSearch:
         # carry more discriminative weight.
         assert provider._idf[stem_token("choking")] > provider._idf[stem_token("scam")]
 
-    async def test_fallback_threshold_is_reachable(self, knowledge_manager):
-        """Guards against re-pinning the fallback to a sentence-transformer threshold."""
+    async def test_threshold_is_reachable(self, knowledge_manager):
+        """The active threshold must be reachable by the active embeddings.
+
+        This is the shape of the original bug: a threshold calibrated for one
+        embedding backend, applied to another that never reaches it. Asserted
+        for whichever backend is installed rather than skipped, since either
+        one being unreachable disables semantic search.
+        """
         rag = knowledge_manager._rag_pipeline
         provider = rag._embedding_provider
 
-        assert not provider._use_sentence_transformers
-        assert rag._similarity_threshold() == FALLBACK_SIMILARITY_THRESHOLD
+        if provider._use_sentence_transformers:
+            expected = knowledge_manager.config.similarity_threshold
+        else:
+            expected = FALLBACK_SIMILARITY_THRESHOLD
+        assert rag._similarity_threshold() == expected
 
         item = next(
             i for i in rag._item_index.values() if i.title == "Choking Response for Adults"
@@ -240,7 +252,64 @@ class TestSemanticSearch:
         query_embedding = np.array(await provider.embed("my friend is choking"))
         cosine = float(query_embedding @ np.array(item.embedding))
 
-        assert cosine >= FALLBACK_SIMILARITY_THRESHOLD
+        assert cosine >= expected, (
+            f"on-topic cosine {cosine:.3f} is below the {expected} threshold, "
+            "so semantic search returns nothing"
+        )
+
+
+class TestEmbeddingInitialization:
+    """Falling back must be a terminal decision, not retried per call."""
+
+    @staticmethod
+    def _install_failing_model(monkeypatch, calls):
+        """Make `from sentence_transformers import SentenceTransformer` succeed
+        but constructing the model fail, as it does offline with no cached copy.
+        """
+        fake = types.ModuleType("sentence_transformers")
+
+        def boom(*args, **kwargs):
+            calls.append(1)
+            raise OSError("no cached model and no network")
+
+        fake.SentenceTransformer = boom
+        monkeypatch.setitem(sys.modules, "sentence_transformers", fake)
+
+    async def test_model_load_failure_falls_back(self, monkeypatch):
+        calls: list[int] = []
+        self._install_failing_model(monkeypatch, calls)
+
+        provider = LocalEmbeddingProvider()
+
+        assert await provider.initialize() is True
+        assert provider._initialized is True
+        assert provider._use_sentence_transformers is False
+        assert len(calls) == 1
+
+    async def test_failed_load_is_not_retried_on_every_embed(self, monkeypatch):
+        """A doomed model load used to run again on each embed() call."""
+        calls: list[int] = []
+        self._install_failing_model(monkeypatch, calls)
+
+        provider = LocalEmbeddingProvider()
+        await provider.initialize()
+        attempts_after_init = len(calls)
+
+        for _ in range(5):
+            await provider.embed("my friend is choking")
+
+        assert len(calls) == attempts_after_init
+
+    async def test_fallback_embeddings_still_usable_after_failure(self, monkeypatch):
+        calls: list[int] = []
+        self._install_failing_model(monkeypatch, calls)
+
+        provider = LocalEmbeddingProvider()
+        await provider.initialize()
+        embedding = await provider.embed("my friend is choking")
+
+        assert len(embedding) == 384
+        assert any(value != 0.0 for value in embedding)
 
 
 class TestStemming:

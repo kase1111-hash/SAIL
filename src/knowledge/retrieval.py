@@ -112,6 +112,16 @@ class LocalEmbeddingProvider(EmbeddingProvider):
         self._word_vectors: dict[str, np.ndarray] = {}
 
     @property
+    def uses_semantic_model(self) -> bool:
+        """Whether the trained encoder is actually loaded.
+
+        False both when the package is missing and when it is installed but the
+        model could not be loaded, which are different causes with the same
+        consequence. Only meaningful after ``initialize()``.
+        """
+        return self._use_sentence_transformers
+
+    @property
     def similarity_threshold(self) -> float:
         """Cosine threshold appropriate to the embeddings actually in use.
 
@@ -139,8 +149,19 @@ class LocalEmbeddingProvider(EmbeddingProvider):
             self._initialized = True
             return True
         except Exception as e:
-            logger.error(f"Failed to initialize embedding model: {e}")
-            return False
+            # The package is installed but the model could not be loaded --
+            # typically no cached copy and no network, which is the normal
+            # state for an offline install. Fall back exactly as the missing
+            # package does. Reporting failure here instead left _initialized
+            # False, so every embed() call retried the model load and stalled
+            # on a doomed network fetch: two per query, indefinitely.
+            logger.warning(
+                f"Could not load embedding model {self.model_name} ({e}); "
+                "using simple embeddings"
+            )
+            self._use_sentence_transformers = False
+            self._initialized = True
+            return True
 
     async def embed(self, text: str) -> list[float]:
         """Generate embedding for a single text."""
@@ -468,8 +489,10 @@ class RAGPipeline:
         # Generate embeddings in batch
         embeddings = await self._embedding_provider.embed_batch(texts)
 
-        # Add to vector store and item index
-        for item, embedding in zip(valid_items, embeddings):
+        # Add to vector store and item index. strict: a provider returning the
+        # wrong number of embeddings would otherwise silently leave the tail of
+        # the corpus unindexed and unsearchable.
+        for item, embedding in zip(valid_items, embeddings, strict=True):
             self._vector_store.add(
                 item_id=item.item_id,
                 embedding=embedding,

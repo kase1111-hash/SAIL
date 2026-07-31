@@ -255,8 +255,14 @@ class MotionStateClassifier:
         magnitudes = [r.magnitude for r in self._accel_history]
         avg_mag = sum(magnitudes) / len(magnitudes)
         variance = sum((m - avg_mag) ** 2 for m in magnitudes) / len(magnitudes)
-        deviation_from_gravity = abs(avg_mag - 9.81)
 
+        # NOTE: the thresholds below are documented in two different units --
+        # stationary_accel_threshold as variance, the walking/running/driving
+        # ranges as "m/s² deviation from gravity" -- but all four are compared
+        # against variance here. A deviation-from-gravity value was computed at
+        # this point and never used, which suggests the ranges were meant for
+        # it. Which set of comments is wrong is not recoverable from the code,
+        # and nothing covers this method, so the behaviour is left as-is.
         # Classify based on patterns
         if variance < self.stationary_accel_threshold:
             return MotionState.STATIONARY, Confidence.MEDIUM

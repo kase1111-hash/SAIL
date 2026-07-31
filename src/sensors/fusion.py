@@ -34,6 +34,11 @@ from .temporal import TemporalAnalysis, TemporalSensor
 
 logger = logging.getLogger(__name__)
 
+# Speed above which driving is treated as a risk factor. Mirrored by
+# HIGH_SPEED_KMH in src.intervention.risk, which scores the same signal for the
+# intervention engine; a test asserts the two stay equal.
+HIGH_SPEED_KMH = 120.0
+
 
 # ============================================================================
 # Fusion Event Types
@@ -123,7 +128,7 @@ class RiskAssessor:
         # High speed driving
         if state.motion_state == MotionState.DRIVING and state.speed_mps:
             speed_kmh = state.speed_mps * 3.6
-            if speed_kmh > 120:  # Over 120 km/h
+            if speed_kmh > HIGH_SPEED_KMH:
                 risk_score += self.risk_weights["driving_high_speed"]
                 factors.append(f"High speed driving: {speed_kmh:.0f} km/h")
 
@@ -151,6 +156,11 @@ class SensorFusionManager(EventEmitter[FusionEvent]):
         # Sensors
         self._sensors: dict[SensorType, Sensor] = {}
         self._sensor_tasks: dict[SensorType, asyncio.Task] = {}
+        self._fusion_task: asyncio.Task | None = None
+        # Fire-and-forget reading handlers. asyncio only holds a weak
+        # reference to a running task, so a task nothing else references can
+        # be garbage collected mid-execution and silently drop the reading.
+        self._pending_tasks: set[asyncio.Task] = set()
 
         # State
         self._situational_state = SituationalState()
@@ -230,7 +240,7 @@ class SensorFusionManager(EventEmitter[FusionEvent]):
             self._sensor_tasks[sensor_type] = task
 
         # Start fusion update loop
-        asyncio.create_task(self._fusion_loop())
+        self._fusion_task = asyncio.create_task(self._fusion_loop())
 
         logger.info("Sensor fusion manager started")
 
@@ -239,9 +249,20 @@ class SensorFusionManager(EventEmitter[FusionEvent]):
         self._running = False
         logger.info("Stopping sensor fusion manager...")
 
+        # Cancel the fusion loop. Clearing _running alone left it sleeping for
+        # up to a second after stop() returned, still touching sensor state.
+        if self._fusion_task is not None:
+            self._fusion_task.cancel()
+            self._fusion_task = None
+
         # Cancel sensor tasks
         for task in self._sensor_tasks.values():
             task.cancel()
+
+        # Cancel any in-flight reading handlers
+        for task in list(self._pending_tasks):
+            task.cancel()
+        self._pending_tasks.clear()
 
         # Stop all sensors
         for sensor in self._sensors.values():
@@ -276,8 +297,11 @@ class SensorFusionManager(EventEmitter[FusionEvent]):
 
     def _on_sensor_reading(self, reading: SensorReading) -> None:
         """Handle incoming sensor reading."""
-        # Queue the reading for processing
-        asyncio.create_task(self._process_reading(reading))
+        # Queue the reading for processing, holding a strong reference until
+        # it finishes so the task cannot be collected part-way through.
+        task = asyncio.create_task(self._process_reading(reading))
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
     def _on_sensor_event(self, event: SensorEvent) -> None:
         """Handle sensor event."""

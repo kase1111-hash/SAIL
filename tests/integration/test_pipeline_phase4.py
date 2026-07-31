@@ -377,6 +377,32 @@ class TestSensorFusionIntegration:
         assert "driving" in ctx
 
     @pytest.mark.asyncio
+    async def test_speed_is_forwarded_to_risk_context(
+        self, config_no_users: Config, mock_llm: MockLLMProvider,
+    ):
+        """SituationalState.speed_mps never reached the risk engine at all."""
+        pipeline = Pipeline(config_no_users, llm=mock_llm)
+        await pipeline.start()
+
+        captured: dict = {}
+
+        async def capture(context):
+            captured.update(context)
+            return None
+
+        pipeline._intervention.evaluate = capture
+
+        state = SituationalState(
+            motion_state=MotionState.DRIVING,
+            location_context=LocationContext.FAMILIAR,
+            speed_mps=40.0,
+        )
+        await pipeline._evaluate_intervention("how fast am I going", None, state)
+        await pipeline.stop()
+
+        assert captured.get("speed_mps") == 40.0
+
+    @pytest.mark.asyncio
     async def test_sensor_context_in_llm_messages(
         self, config_no_users: Config, mock_llm: MockLLMProvider, situational_state: SituationalState,
     ):

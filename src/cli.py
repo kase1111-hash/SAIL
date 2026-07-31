@@ -495,6 +495,7 @@ def check() -> None:
         ("Configuration file", _check_config),
         ("Ollama connection", _check_ollama),
         ("Audio devices", _check_audio),
+        ("Knowledge embeddings", _check_embeddings),
     ]
 
     all_passed = True
@@ -533,6 +534,34 @@ def _check_config() -> tuple[bool, str]:
     if path:
         return True, str(path)
     return False, "No configuration file found"
+
+
+def _check_embeddings() -> tuple[bool, str]:
+    """Report which embedding backend semantic search will use.
+
+    Never fails the check: the fallback is functional, just weaker. It is
+    reported because the difference is otherwise invisible -- the fallback is
+    chosen silently at runtime.
+    """
+    try:
+        import sentence_transformers  # noqa: F401
+    except ImportError:
+        # Backslash-escaped: console.print parses [...] as Rich markup and
+        # would otherwise swallow "[embeddings]" from the install hint.
+        return True, (
+            r"TF-IDF fallback (install 'sail\[embeddings]' for semantic search)"
+        )
+
+    # Installed is not the same as working: with no cached model and no
+    # network the encoder fails to load and retrieval silently falls back.
+    # Load it for real so this reports what SAIL will actually use.
+    from .knowledge.retrieval import LocalEmbeddingProvider
+
+    provider = LocalEmbeddingProvider()
+    asyncio.run(provider.initialize())
+    if provider.uses_semantic_model:
+        return True, f"sentence-transformers ({provider.model_name})"
+    return True, "TF-IDF fallback (model installed but could not be loaded)"
 
 
 def _check_ollama() -> tuple[bool, str]:

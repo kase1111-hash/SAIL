@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        # Core + dev only. The voice, sensor, and embedding extras pull native
+        # and multi-GB dependencies that the suite does not need: every module
+        # guarding them degrades gracefully when they are absent.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff (errors)
+        # Blocking, and scoped to rules that catch genuine breakage: syntax
+        # errors, undefined names, broken f-strings, invalid comparisons.
+        run: ruff check --select E9,F63,F7,F82 src tests
+
+      - name: Ruff (full, advisory)
+        # The full rule set in pyproject reports ~730 pre-existing style
+        # violations. Surfaced for visibility, not gating, so this job stays
+        # meaningful instead of being permanently red.
+        continue-on-error: true
+        run: ruff check src tests
+
+      - name: mypy (advisory)
+        # ~200 pre-existing annotation errors; same rationale as above.
+        continue-on-error: true
+        run: mypy src

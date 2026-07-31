@@ -179,8 +179,6 @@ class VADProcessor:
         is_speech = speech_frames > num_frames / 2 if num_frames > 0 else False
 
         # Update state tracking
-        previous_state = self._current_state
-
         if is_speech:
             self._speech_frame_count += 1
             self._silence_frame_count = 0

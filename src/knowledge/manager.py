@@ -291,8 +291,10 @@ class KnowledgeManager(EventEmitter[KnowledgeEvent]):
             all_items.extend(result.items)
             all_scores.extend(result.scores)
 
-        # Sort by score and limit
-        combined = list(zip(all_items, all_scores))
+        # Sort by score and limit. strict: items and scores are appended in
+        # lockstep above, so a length mismatch means a domain returned
+        # inconsistent results rather than something to paper over.
+        combined = list(zip(all_items, all_scores, strict=True))
         combined.sort(key=lambda x: x[1], reverse=True)
         combined = combined[:query.max_results]
 

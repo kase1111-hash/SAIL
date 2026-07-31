@@ -784,6 +784,54 @@ class TestSensorFusionManager:
         assert len(manager.sensors) == 0
 
     @pytest.mark.asyncio
+    async def test_fusion_loop_task_is_retained_and_cancelled(self):
+        """asyncio keeps only a weak reference to a running task.
+
+        The fusion loop was started without storing the task, so it could be
+        garbage collected mid-execution, and stop() never cancelled it -- it
+        only cleared the flag the loop checks between one-second sleeps.
+        """
+        from src.sensors.fusion import SensorFusionManager
+
+        manager = SensorFusionManager()
+        await manager.initialize()
+        await manager.start()
+
+        assert manager._fusion_task is not None
+        assert not manager._fusion_task.done()
+
+        task = manager._fusion_task
+        await manager.stop()
+
+        assert task.cancelled() or task.cancelling() or task.done()
+        assert manager._fusion_task is None
+
+    @pytest.mark.asyncio
+    async def test_reading_handler_tasks_are_retained(self):
+        """Per-reading handlers were fire-and-forget and could be collected."""
+        import asyncio
+
+        from src.sensors.base import Confidence, SensorReading, SensorType
+        from src.sensors.fusion import SensorFusionManager
+
+        manager = SensorFusionManager()
+        reading = SensorReading(
+            sensor_type=SensorType.TEMPORAL,
+            sensor_id="test",
+            data=None,
+            confidence=Confidence.HIGH,
+        )
+
+        manager._on_sensor_reading(reading)
+
+        assert len(manager._pending_tasks) == 1
+
+        # The strong reference is released once the handler completes.
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert manager._pending_tasks == set()
+
+    @pytest.mark.asyncio
     async def test_add_sensor(self):
         """Test adding sensor to manager."""
         from src.sensors.fusion import SensorFusionManager

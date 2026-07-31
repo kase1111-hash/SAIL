@@ -22,6 +22,12 @@ from .base import (
 
 logger = logging.getLogger(__name__)
 
+# Speed above which driving is treated as a risk factor. Deliberately duplicated
+# rather than imported from src.sensors.fusion: this module takes a plain dict
+# context so the intervention layer stays independent of the sensor types.
+# test_risk_speed_threshold_matches_fusion keeps the two values in step.
+HIGH_SPEED_KMH = 120.0
+
 
 # ============================================================================
 # Risk Factor Definitions
@@ -82,6 +88,11 @@ RISK_PATTERNS: dict[str, dict[str, Any]] = {
         "category": RiskCategory.BEHAVIORAL,
         "weight": 0.9,
         "description": "Driving patterns indicate distraction or impairment",
+    },
+    "high_speed_driving": {
+        "category": RiskCategory.BEHAVIORAL,
+        "weight": 0.7,
+        "description": "Driving well above typical highway speeds",
     },
     "sudden_route_change": {
         "category": RiskCategory.BEHAVIORAL,
@@ -244,6 +255,19 @@ class RiskAssessmentEngine:
             if f.name not in self._suppressed_patterns
         ]
 
+        # Collapse repeats of the same pattern, keeping the strongest. Distinct
+        # context combinations can raise the same factor -- late night with
+        # driving and late night in an unfamiliar area both raise
+        # late_night_travel -- and the overall score is a weighted average, so
+        # a repeat silently doubles that pattern's weight against every other
+        # factor rather than adding new information.
+        strongest: dict[str, RiskFactor] = {}
+        for factor in factors:
+            existing = strongest.get(factor.name)
+            if existing is None or factor.score > existing.score:
+                strongest[factor.name] = factor
+        factors = list(strongest.values())
+
         # Calculate overall risk score
         if factors:
             total_weighted = sum(f.weighted_score for f in factors)
@@ -307,6 +331,15 @@ class RiskAssessmentEngine:
 
         if motion_state == "driving" and is_late_night:
             factors.append(self._create_factor("late_night_travel", 0.7))
+
+        # Speed threshold matches SensorFusion._calculate_risk, so the two
+        # risk paths agree on what counts as high speed.
+        if motion_state == "driving" and speed_mps:
+            speed_kmh = speed_mps * 3.6
+            if speed_kmh > HIGH_SPEED_KMH:
+                factors.append(self._create_factor("high_speed_driving", 0.8, {
+                    "speed_kmh": round(speed_kmh, 1),
+                }))
 
         # Environmental factors
         threat_cues = context.get("threat_cues", [])
