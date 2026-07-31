@@ -406,10 +406,14 @@ class FasterWhisperProvider(STTProvider):
 
                 # Run transcription
                 loop = asyncio.get_event_loop()
+                # `audio` is bound as a default argument rather than captured:
+                # the closure would otherwise read whatever the loop variable
+                # holds when it runs, which is only safe while this stays
+                # awaited on the same iteration.
                 segments_iter, _ = await loop.run_in_executor(
                     None,
-                    lambda: self._model.transcribe(
-                        audio,
+                    lambda chunk=audio: self._model.transcribe(
+                        chunk,
                         language=self.config.language,
                         beam_size=self.config.beam_size,
                         vad_filter=self.config.vad_filter,

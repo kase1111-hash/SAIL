@@ -489,8 +489,10 @@ class RAGPipeline:
         # Generate embeddings in batch
         embeddings = await self._embedding_provider.embed_batch(texts)
 
-        # Add to vector store and item index
-        for item, embedding in zip(valid_items, embeddings):
+        # Add to vector store and item index. strict: a provider returning the
+        # wrong number of embeddings would otherwise silently leave the tail of
+        # the corpus unindexed and unsearchable.
+        for item, embedding in zip(valid_items, embeddings, strict=True):
             self._vector_store.add(
                 item_id=item.item_id,
                 embedding=embedding,

@@ -255,6 +255,19 @@ class RiskAssessmentEngine:
             if f.name not in self._suppressed_patterns
         ]
 
+        # Collapse repeats of the same pattern, keeping the strongest. Distinct
+        # context combinations can raise the same factor -- late night with
+        # driving and late night in an unfamiliar area both raise
+        # late_night_travel -- and the overall score is a weighted average, so
+        # a repeat silently doubles that pattern's weight against every other
+        # factor rather than adding new information.
+        strongest: dict[str, RiskFactor] = {}
+        for factor in factors:
+            existing = strongest.get(factor.name)
+            if existing is None or factor.score > existing.score:
+                strongest[factor.name] = factor
+        factors = list(strongest.values())
+
         # Calculate overall risk score
         if factors:
             total_weighted = sum(f.weighted_score for f in factors)

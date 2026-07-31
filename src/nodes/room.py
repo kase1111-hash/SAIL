@@ -366,6 +366,11 @@ class RoomNode(BaseNode):
 
         self._room_config = config
 
+        # Fire-and-forget tasks spawned from synchronous callbacks. asyncio
+        # holds only a weak reference to a running task, so one that nothing
+        # else references can be collected before it finishes.
+        self._pending_tasks: set[asyncio.Task] = set()
+
         # Components
         self._led = LEDController(
             enabled=config.led_enabled,
@@ -465,7 +470,9 @@ class RoomNode(BaseNode):
         """Handle wake word detection."""
         logger.info("Wake word detected")
         self._is_listening = True
-        _ = asyncio.create_task(self._led.set_state(LEDState.LISTENING))
+        task = asyncio.create_task(self._led.set_state(LEDState.LISTENING))
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
         self._emit_event("wake_word_detected")
 
     async def start_listening(self) -> None:

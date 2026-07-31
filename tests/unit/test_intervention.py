@@ -321,6 +321,41 @@ class TestRiskAssessmentEngine:
         names = [f.name for f in assessment.factors]
         assert "high_speed_driving" not in names
 
+    def test_repeated_pattern_is_counted_once(self):
+        """Late night + unfamiliar + driving raised late_night_travel twice.
+
+        The score is a weighted average, so the repeat doubled that pattern's
+        weight against every other factor instead of adding information.
+        """
+        from src.intervention.risk import RiskAssessmentEngine
+
+        engine = RiskAssessmentEngine()
+        assessment = engine.assess({
+            "location_context": "unfamiliar",
+            "is_late_night": True,
+            "motion_state": "driving",
+        })
+
+        names = [f.name for f in assessment.factors]
+        assert names.count("late_night_travel") == 1
+        assert len(names) == len(set(names))
+
+    def test_repeated_pattern_keeps_highest_score(self):
+        """Collapsing repeats must not discard the more severe reading."""
+        from src.intervention.risk import RiskAssessmentEngine
+
+        engine = RiskAssessmentEngine()
+        assessment = engine.assess({
+            "location_context": "unfamiliar",
+            "is_late_night": True,
+            "motion_state": "driving",
+        })
+
+        travel = next(
+            f for f in assessment.factors if f.name == "late_night_travel"
+        )
+        assert travel.score == 0.8
+
     def test_risk_speed_threshold_matches_fusion(self):
         """The two risk paths score the same signal and must not drift apart."""
         from src.intervention.risk import HIGH_SPEED_KMH
