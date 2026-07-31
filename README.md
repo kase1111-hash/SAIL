@@ -41,6 +41,32 @@ sail init
 sail check
 ```
 
+#### Optional dependency groups
+
+| Extra | Provides |
+| --- | --- |
+| `dev` | Test, lint, and type-check tooling |
+| `whisper` | Speech-to-text |
+| `tts` | Text-to-speech |
+| `wake` | Wake-word detection |
+| `sensors` | GPS location sensing |
+| `embeddings` | Semantic search over the knowledge base |
+| `all` | Everything except `dev` |
+
+`embeddings` is worth installing even in text mode. Without it, knowledge
+retrieval falls back to TF-IDF hash embeddings: still functional, but it ranks
+noticeably worse than the sentence-transformers model SAIL is configured to use
+by default.
+
+Note that the encoder is downloaded once, on first use, from Hugging Face — the
+only step in setup that reaches the network. It is cached locally afterwards and
+never contacts the network again, so an air-gapped machine needs that cache
+warmed beforehand. If the model cannot be loaded, retrieval falls back to TF-IDF
+rather than failing.
+
+`sail check` reports which of the two is actually in use, loading the model to
+find out rather than just checking that the package is importable.
+
 ### Running SAIL
 
 ```bash
